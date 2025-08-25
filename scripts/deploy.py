@@ -104,7 +104,7 @@ def execute_formula(web3, account, formula_path):
         step_num = step["step"]
         
         print(f"\n--- اجرای مرحله {step_num}: '{action}' برای '{step['contractName']}' ---")
-        
+        time.sleep(5)
         # گرفتن جدیدترین nonce از شبکه برای شروع این مرحله
         current_nonce = web3.eth.get_transaction_count(account.address)
         print(f"⛓️ Nonce اولیه برای این مرحله: {current_nonce}")
@@ -114,7 +114,7 @@ def execute_formula(web3, account, formula_path):
             try:
                 # اصلاح نهایی: افزایش هزینه گس برای اطمینان از پردازش تراکنش
                 gas_price = web3.eth.gas_price
-                gas_price_aggressive = int(gas_price * 1.5) # 50% بالاتر از قیمت فعلی
+                gas_price_aggressive = int(gas_price * 1.1) # 50% بالاتر از قیمت فعلی
                 print(f"💰 قیمت گس (با ۵۰٪ اضافه): {web3.from_wei(gas_price_aggressive, 'gwei')} Gwei")
 
                 # ساخت تراکنش با nonce و gas price جدید
@@ -170,7 +170,7 @@ def execute_formula(web3, account, formula_path):
                     current_nonce += 1
                     if i == max_retries - 1:
                         raise e
-                    time.sleep(1)
+                    time.sleep(5)
                 else:
                     raise e
             except Exception as e:
