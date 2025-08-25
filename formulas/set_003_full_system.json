@@ -1,0 +1,96 @@
+{
+  "name": "مجموعه 003: دیپلوی کامل سیستم استیکینگ و بازی",
+  "description": "تمام 6 قرارداد را دیپلوی کرده و تمام مالکیت‌ها را برای فعال‌سازی کامل سیستم تنظیم می‌کند.",
+  "steps": [
+    {
+      "step": 1,
+      "action": "deploy",
+      "contractName": "UGameToken",
+      "source": "contracts/UGameToken.sol",
+      "args": ["{{deployer.address}}"]
+    },
+    {
+      "step": 2,
+      "action": "deploy",
+      "contractName": "LockUGameToken",
+      "source": "contracts/LockUGameToken.sol",
+      "args": ["{{deployer.address}}"]
+    },
+    {
+      "step": 3,
+      "action": "deploy",
+      "contractName": "WrapperDToken",
+      "source": "contracts/WrapperDToken.sol",
+      "args": ["{{deployer.address}}"]
+    },
+    {
+      "step": 4,
+      "action": "deploy",
+      "contractName": "GameContract",
+      "source": "contracts/GameContract.sol",
+      "args": [
+        "{{WrapperDToken.address}}",
+        "{{LockUGameToken.address}}",
+        "{{UGameToken.address}}",
+        "{{deployer.address}}"
+      ]
+    },
+    {
+      "step": 5,
+      "action": "deploy",
+      "contractName": "WrapperD",
+      "source": "contracts/WrapperD.sol",
+      "args": [
+        "{{WrapperDToken.address}}",
+        "{{deployer.address}}"
+      ]
+    },
+    {
+      "step": 6,
+      "action": "deploy",
+      "contractName": "MarkazD_Hub",
+      "source": "contracts/MarkazD_Hub.sol",
+      "args": [
+        "{{WrapperD.address}}",
+        "{{GameContract.address}}",
+        "{{WrapperDToken.address}}",
+        "{{deployer.address}}"
+      ]
+    },
+    {
+      "step": 7,
+      "action": "call_function",
+      "contractName": "UGameToken",
+      "function": "transferOwnership",
+      "args": ["{{GameContract.address}}"]
+    },
+    {
+      "step": 8,
+      "action": "call_function",
+      "contractName": "LockUGameToken",
+      "function": "transferOwnership",
+      "args": ["{{GameContract.address}}"]
+    },
+    {
+      "step": 9,
+      "action": "call_function",
+      "contractName": "WrapperDToken",
+      "function": "transferOwnership",
+      "args": ["{{WrapperD.address}}"]
+    },
+    {
+      "step": 10,
+      "action": "call_function",
+      "contractName": "GameContract",
+      "function": "transferOwnership",
+      "args": ["{{MarkazD_Hub.address}}"]
+    },
+    {
+      "step": 11,
+      "action": "call_function",
+      "contractName": "WrapperD",
+      "function": "transferOwnership",
+      "args": ["{{MarkazD_Hub.address}}"]
+    }
+  ]
+}
