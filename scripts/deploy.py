@@ -84,7 +84,7 @@ def resolve_args(args, context):
 
 def execute_formula(web3, account, formula_path):
     """
-    فایل دستورالعمل JSON را با منطق پیشرفته nonce اجرا می‌کند.
+    فایل دستورالعمل JSON را با منطق پیشرفته nonce و gas price اجرا می‌کند.
     """
     try:
         with open(formula_path, 'r') as f:
@@ -112,7 +112,12 @@ def execute_formula(web3, account, formula_path):
         max_retries = 3
         for i in range(max_retries):
             try:
-                # ساخت تراکنش با nonce فعلی
+                # اصلاح نهایی: افزایش هزینه گس برای اطمینان از پردازش تراکنش
+                gas_price = web3.eth.gas_price
+                gas_price_aggressive = int(gas_price * 1.5) # 50% بالاتر از قیمت فعلی
+                print(f"💰 قیمت گس (با ۵۰٪ اضافه): {web3.from_wei(gas_price_aggressive, 'gwei')} Gwei")
+
+                # ساخت تراکنش با nonce و gas price جدید
                 if action == "deploy":
                     contract_name = step["contractName"]
                     source_path = step["source"]
@@ -123,7 +128,7 @@ def execute_formula(web3, account, formula_path):
                     bytecode = contract_interface['bin']
                     Contract = web3.eth.contract(abi=abi, bytecode=bytecode)
                     tx_data = Contract.constructor(*constructor_args).build_transaction({
-                        "from": account.address, "nonce": current_nonce
+                        "from": account.address, "nonce": current_nonce, "gasPrice": gas_price_aggressive
                     })
 
                 elif action == "call_function":
@@ -134,7 +139,7 @@ def execute_formula(web3, account, formula_path):
                     contract_instance = web3.eth.contract(address=target_contract_info["address"], abi=target_contract_info["abi"])
                     func = getattr(contract_instance.functions, function_name)
                     tx_data = func(*function_args).build_transaction({
-                        "from": account.address, "nonce": current_nonce
+                        "from": account.address, "nonce": current_nonce, "gasPrice": gas_price_aggressive
                     })
                 else:
                     print(f"⚠️ اکشن ناشناخته '{action}'.")
@@ -156,20 +161,19 @@ def execute_formula(web3, account, formula_path):
                 elif action == "call_function":
                     print(f"✅ تابع '{function_name}' روی قرارداد '{contract_name}' با موفقیت اجرا شد.")
                 
-                break # <-- خروج از حلقه تلاش مجدد در صورت موفقیت
+                break # خروج از حلقه تلاش مجدد در صورت موفقیت
 
             except Web3RPCError as e:
-                # اگر خطای nonce بود، nonce را یکی بالا ببر و دوباره امتحان کن
                 error_message = str(e).lower()
                 if ('nonce too low' in error_message or 'replacement transaction underpriced' in error_message):
                     print(f"⚠️ خطای Nonce با شماره {current_nonce} دریافت شد. تلاش مجدد با شماره بعدی...")
-                    current_nonce += 1 # افزایش دستی nonce برای تلاش مجدد
-                    if i == max_retries - 1: # اگر آخرین تلاش بود، خطا را نمایش بده و خارج شو
+                    current_nonce += 1
+                    if i == max_retries - 1:
                         raise e
-                    time.sleep(1) # یک ثانیه تاخیر قبل از تلاش مجدد
-                else: # اگر خطای دیگری بود، فوراً خارج شو
+                    time.sleep(1)
+                else:
                     raise e
-            except Exception as e: # برای خطاهای دیگر
+            except Exception as e:
                 print(f"❌ یک خطای پیش‌بینی نشده رخ داد.")
                 raise e
 
