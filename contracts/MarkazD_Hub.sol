@@ -53,6 +53,7 @@ contract MarkazD_Hub is Ownable {
     IWrapperD public immutable wrapperD;
     IGameContract public immutable gameContract;
     IWrapperDToken public immutable wrapperDToken; 
+    uint256 private constant DECIMALS = 1e18;
 
     // --- Events ---
     
@@ -100,6 +101,15 @@ contract MarkazD_Hub is Ownable {
     }
 
     /**
+     * @dev Simple version of unwrap for full tokens.
+     * @param _fullAmount The number of full tokens to unwrap (e.g., 1, 5, 100).
+     */
+    function unwrapFull(uint256 _fullAmount) external {
+        uint256 amount = _fullAmount * DECIMALS;
+        unwrap(amount);
+    }
+
+    /**
      * @dev Locks wDT in the game. User must first approve this Hub contract to spend their wDT.
      */
     function lockInGame(uint256 _amount) external {
@@ -110,6 +120,15 @@ contract MarkazD_Hub is Ownable {
         gameContract.lock(msg.sender, _amount);
         emit LockedInGame(msg.sender, _amount);
     }
+
+    /**
+     * @dev Simple version of lockInGame for full tokens.
+     * @param _fullAmount The number of full tokens to lock (e.g., 1, 5, 100).
+     */
+    function lockInGameFull(uint256 _fullAmount) external {
+        uint256 amount = _fullAmount * DECIMALS;
+        lockInGame(amount);
+    }
     
     /**
      * @dev Unlocks wDT from the game by burning LUGAME tokens.
@@ -118,6 +137,15 @@ contract MarkazD_Hub is Ownable {
         require(_amount > 0, "Hub: Cannot unlock 0");
         gameContract.unlock(msg.sender, _amount);
         emit UnlockedFromGame(msg.sender, _amount);
+    }
+
+    /**
+     * @dev Simple version of unlockFromGame for full tokens.
+     * @param _fullAmount The number of full tokens to unlock (e.g., 1, 5, 100).
+     */
+    function unlockFromGameFull(uint256 _fullAmount) external {
+        uint256 amount = _fullAmount * DECIMALS;
+        unlockFromGame(amount);
     }
 
     /**
