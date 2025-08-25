@@ -99,13 +99,9 @@ def execute_formula(web3, account, formula_path):
 
     print(f"\n🚀 شروع اجرای دستورالعمل: {formula['name']}")
     
-    # برای ذخیره آدرس و ABI قراردادهای دیپلوی شده
     deployment_context = {}
-    
-    # *** تغییر کلیدی: اضافه کردن آدرس دیپلوی‌کننده به کانتکست ***
     deployment_context['deployer'] = {'address': account.address}
     print(f"🔧 کانتکست اولیه با آدرس دیپلوی‌کننده تنظیم شد.")
-
 
     for step in sorted(formula["steps"], key=lambda s: s['step']):
         action = step["action"]
@@ -118,20 +114,20 @@ def execute_formula(web3, account, formula_path):
             source_path = step["source"]
             constructor_args = resolve_args(step.get("args", []), deployment_context)
 
-            # کامپایل کردن قرارداد
             compiled_sol = solcx.compile_files([source_path], output_values=["abi", "bin"])
             contract_interface = compiled_sol[f'{source_path}:{contract_name}']
             abi = contract_interface['abi']
             bytecode = contract_interface['bin']
             
-            # ساخت و ارسال تراکنش دیپلوی
             Contract = web3.eth.contract(abi=abi, bytecode=bytecode)
             tx = Contract.constructor(*constructor_args).build_transaction({
                 "from": account.address,
                 "nonce": web3.eth.get_transaction_count(account.address),
             })
             signed_tx = web3.eth.account.sign_transaction(tx, private_key=account.key)
-            tx_hash = web3.eth.send_raw_transaction(signed_tx.rawTransaction)
+            
+            # ✅ رفع خطا: تغییر .rawTransaction به .raw_transaction
+            tx_hash = web3.eth.send_raw_transaction(signed_tx.raw_transaction)
             
             print(f"⏳ در حال دیپلوی قرارداد... هش تراکنش: {tx_hash.hex()}")
             tx_receipt = web3.eth.wait_for_transaction_receipt(tx_hash)
@@ -139,7 +135,6 @@ def execute_formula(web3, account, formula_path):
             contract_address = tx_receipt.contractAddress
             print(f"✅ قرارداد '{contract_name}' با موفقیت در آدرس {contract_address} دیپلوی شد.")
             
-            # ذخیره اطلاعات برای مراحل بعدی
             deployment_context[contract_name] = {"address": contract_address, "abi": abi}
 
         elif action == "call_function":
@@ -147,7 +142,6 @@ def execute_formula(web3, account, formula_path):
             function_name = step["function"]
             function_args = resolve_args(step.get("args", []), deployment_context)
             
-            # پیدا کردن اطلاعات قرارداد از مراحل قبلی
             if contract_name not in deployment_context:
                 print(f"❌ خطا: قرارداد '{contract_name}' برای فراخوانی تابع، قبلا دیپلوی نشده است.")
                 sys.exit(1)
@@ -155,14 +149,15 @@ def execute_formula(web3, account, formula_path):
             target_contract_info = deployment_context[contract_name]
             contract_instance = web3.eth.contract(address=target_contract_info["address"], abi=target_contract_info["abi"])
             
-            # ساخت و ارسال تراکنش فراخوانی تابع
             func = getattr(contract_instance.functions, function_name)
             tx = func(*function_args).build_transaction({
                 "from": account.address,
                 "nonce": web3.eth.get_transaction_count(account.address),
             })
             signed_tx = web3.eth.account.sign_transaction(tx, private_key=account.key)
-            tx_hash = web3.eth.send_raw_transaction(signed_tx.rawTransaction)
+            
+            # ✅ رفع خطا: تغییر .rawTransaction به .raw_transaction
+            tx_hash = web3.eth.send_raw_transaction(signed_tx.raw_transaction)
 
             print(f"⏳ در حال فراخوانی تابع '{function_name}'... هش تراکنش: {tx_hash.hex()}")
             web3.eth.wait_for_transaction_receipt(tx_hash)
