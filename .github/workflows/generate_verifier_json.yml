@@ -1,4 +1,4 @@
-name: Generate Verifier JSON
+name: Generate Verifier JSON and Commit
 
 on:
   workflow_dispatch:
@@ -9,28 +9,38 @@ on:
         type: string
 
 jobs:
-  build:
+  build-and-commit:
     runs-on: ubuntu-latest
 
     steps:
+      # 1. دانلود کدهای ریپازیتوری
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # 2. آماده‌سازی پایتون
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
 
+      # 3. نصب کتابخانه‌های مورد نیاز
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      # 4. اجرای اسکریپت برای ساخت فایل JSON
       - name: Generate Standard Input JSON
         run: python scripts/generate_verification_json.py ${{ github.event.inputs.contract_path }}
 
-      # --- تغییر اصلی در این بخش است ---
-      # به جای یک فایل، کل پوشه خروجی را آپلود می‌کنیم
-      - name: Upload Verification JSON folder
-        uses: actions/upload-artifact@v4
-        with:
-          name: verification-files
-          path: verify-explorer-output/
+      # 5. کامیت و پوش کردن فایل‌های جدید به ریپازیتوری
+      - name: Commit and Push new files
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add verify-explorer-output/
+          # فقط در صورتی کامیت کن که تغییری وجود داشته باشد
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: Generate verifier JSON for ${{ github.event.inputs.contract_path }}"
+            git push
+          else
+            echo "No new verification files to commit."
+          fi
