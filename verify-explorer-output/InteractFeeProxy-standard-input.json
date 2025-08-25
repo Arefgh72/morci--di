@@ -1,0 +1,21 @@
+{
+    "language": "Solidity",
+    "sources": {
+        "contracts/InteractFeeProxy.sol": {
+            "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.20;\n\ninterface IMainContract {\n    function interact(address _user) external returns (uint256);\n}\n\ncontract InteractFeeProxy {\n    IMainContract public immutable mainContract;\n    uint256 public immutable INTERACT_FEE;\n    address public owner;\n\n    event FeePaid(address indexed user, uint256 amount);\n    event InteractionForwarded(address indexed user, bool success);\n    event Withdraw(address indexed to, uint256 amount);\n\n    constructor(address _mainContractAddress) {\n        require(_mainContractAddress != address(0), \"Invalid MainContract address\");\n        mainContract = IMainContract(_mainContractAddress);\n        INTERACT_FEE = 0.001 ether;\n        owner = msg.sender;\n    }\n\n    modifier onlyOwner() {\n        require(msg.sender == owner, \"Only owner can call this function\");\n        _;\n    }\n\n    function interactWithFee() public payable {\n        require(msg.value >= INTERACT_FEE, \"Insufficient fee sent\");\n        if (msg.value > INTERACT_FEE) {\n            payable(msg.sender).transfer(msg.value - INTERACT_FEE);\n        }\n        emit FeePaid(msg.sender, INTERACT_FEE);\n        \n        (bool success, ) = address(mainContract).call(\n            abi.encodeWithSignature(\"interact(address)\", msg.sender)\n        );\n        require(success, \"Failed to call interact on MainContract\");\n\n        emit InteractionForwarded(msg.sender, true);\n    }\n\n    function withdrawEther() public onlyOwner {\n        uint256 balance = address(this).balance;\n        require(balance > 0, \"No funds to withdraw\");\n        payable(owner).transfer(balance);\n        emit Withdraw(owner, balance);\n    }\n}\n"
+        }
+    },
+    "settings": {
+        "optimizer": {
+            "enabled": true,
+            "runs": 200
+        },
+        "outputSelection": {
+            "*": {
+                "*": [
+                    "*"
+                ]
+            }
+        }
+    }
+}
