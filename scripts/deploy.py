@@ -5,6 +5,7 @@ import re
 from web3 import Web3
 import solcx
 from web3.exceptions import Web3RPCError
+import time
 
 # --- ۱. بخش تنظیمات و اتصال ---
 
@@ -104,16 +105,15 @@ def execute_formula(web3, account, formula_path):
         
         print(f"\n--- اجرای مرحله {step_num}: '{action}' برای '{step['contractName']}' ---")
         
-        # --- منطق نهایی و صحیح برای ارسال تراکنش با قابلیت تلاش مجدد ---
+        # ۱. گرفتن جدیدترین nonce از شبکه برای شروع این مرحله
+        current_nonce = web3.eth.get_transaction_count(account.address)
+        print(f"⛓️ Nonce اولیه برای این مرحله: {current_nonce}")
+
         max_retries = 3
         for i in range(max_retries):
             try:
-                # ۱. گرفتن جدیدترین nonce از شبکه قبل از هر تلاش
-                current_nonce = web3.eth.get_transaction_count(account.address)
-                print(f"⛓️ تلاش شماره {i+1}: استعلام Nonce از شبکه: {current_nonce}")
-
+                # ساخت تراکنش با nonce فعلی
                 if action == "deploy":
-                    # ... (بخش ساخت تراکنش دیپلوی) ...
                     contract_name = step["contractName"]
                     source_path = step["source"]
                     constructor_args = resolve_args(step.get("args", []), deployment_context)
@@ -127,7 +127,6 @@ def execute_formula(web3, account, formula_path):
                     })
 
                 elif action == "call_function":
-                    # ... (بخش ساخت تراکنش فراخوانی تابع) ...
                     contract_name = step["contractName"]
                     function_name = step["function"]
                     function_args = resolve_args(step.get("args", []), deployment_context)
@@ -139,17 +138,17 @@ def execute_formula(web3, account, formula_path):
                     })
                 else:
                     print(f"⚠️ اکشن ناشناخته '{action}'.")
-                    break # از حلقه تلاش مجدد خارج شو چون اکشن تعریف نشده
+                    break
 
-                # ۲. امضا و ارسال تراکنش
+                # امضا و ارسال
                 signed_tx = web3.eth.account.sign_transaction(tx_data, private_key=account.key)
                 tx_hash = web3.eth.send_raw_transaction(signed_tx.raw_transaction)
                 print(f"⏳ تراکنش با Nonce {current_nonce} ارسال شد... هش: {tx_hash.hex()}")
                 
-                # ۳. انتظار برای تایید تراکنش
+                # انتظار برای تایید
                 tx_receipt = web3.eth.wait_for_transaction_receipt(tx_hash, timeout=300)
 
-                # اگر تراکنش موفق بود، اطلاعات را ثبت کن و از حلقه تلاش مجدد خارج شو
+                # ثبت نتیجه در صورت موفقیت
                 if action == "deploy":
                     contract_address = tx_receipt.contractAddress
                     print(f"✅ قرارداد '{contract_name}' با موفقیت در آدرس {contract_address} دیپلوی شد.")
@@ -160,15 +159,17 @@ def execute_formula(web3, account, formula_path):
                 break # <-- خروج از حلقه تلاش مجدد در صورت موفقیت
 
             except Web3RPCError as e:
-                # ۴. اگر خطای مربوط به nonce بود، اجازه بده حلقه برای تلاش مجدد ادامه پیدا کند
+                # ۲. اگر خطای nonce بود، nonce را یکی بالا ببر و دوباره امتحان کن
                 error_message = str(e).lower()
                 if ('nonce too low' in error_message or 'replacement transaction underpriced' in error_message):
-                    print(f"⚠️ خطای Nonce دریافت شد. تلاش مجدد ({i+1}/{max_retries})...")
-                    if i == max_retries - 1: # اگر آخرین تلاش بود، خطا را نمایش بده و خارج شو
+                    print(f"⚠️ خطای Nonce با شماره {current_nonce} دریافت شد. تلاش مجدد با شماره بعدی...")
+                    current_nonce += 1 # <-- افزایش دستی nonce برای تلاش مجدد
+                    if i == max_retries - 1:
                         raise e
-                else: # اگر خطای دیگری بود، فوراً خارج شو
+                    time.sleep(1) # یک ثانیه تاخیر قبل از تلاش مجدد
+                else:
                     raise e
-            except Exception as e: # برای خطاهای دیگر
+            except Exception as e:
                 print(f"❌ یک خطای پیش‌بینی نشده رخ داد.")
                 raise e
 
