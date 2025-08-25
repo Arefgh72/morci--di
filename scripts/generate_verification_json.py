@@ -5,28 +5,42 @@ import solcx
 
 def generate_standard_json(contract_path):
     """
-    فایل ورودی JSON استاندارد برای وریفای کردن قرارداد را در پوشه و با نام مشخص تولید می‌کند.
+    فایل ورودی JSON استاندارد برای وریفای کردن قرارداد را با فرمت صحیح تولید می‌کند.
     """
     if not os.path.exists(contract_path):
         print(f"❌ خطا: فایل در مسیر '{contract_path}' پیدا نشد.")
         sys.exit(1)
 
+    # --- تغییر کلیدی در این بخش است ---
+    # ساختار settings دقیقاً مطابق با نیاز اکسپلوررها اصلاح شد.
     compiler_settings = {
         "optimizer": {
-            "enabled": True,
+            "enabled": False, # این مقدار بر اساس نیاز شما می‌تواند true یا false باشد
             "runs": 200
         },
         "outputSelection": {
             "*": {
-                "*": ["*"]
+                "*": [
+                    "abi",
+                    "evm.bytecode",
+                    "evm.deployedBytecode",
+                    "evm.methodIdentifiers",
+                    "metadata"
+                ]
             }
-        }
+        },
+        "metadata": {
+            "useLiteralContent": True
+        },
+        "libraries": {}
     }
 
     try:
-        with open(contract_path, 'r') as f:
+        # خواندن محتوای فایل قرارداد
+        with open(contract_path, 'r', encoding='utf-8') as f:
             source_code = f.read()
 
+        # ساخت ساختار ورودی استاندارد JSON
         input_json = {
             "language": "Solidity",
             "sources": {
@@ -37,24 +51,18 @@ def generate_standard_json(contract_path):
             "settings": compiler_settings
         }
 
-        # --- تغییرات اصلی در این بخش است ---
-        # 1. ساخت نام فایل خروجی بر اساس نام فایل ورودی
-        base_name = os.path.basename(contract_path)  # e.g., "MainContract.sol"
-        contract_name, _ = os.path.splitext(base_name)  # e.g., "MainContract"
+        # ساخت نام و مسیر فایل خروجی
+        base_name = os.path.basename(contract_path)
+        contract_name, _ = os.path.splitext(base_name)
         output_filename = f"{contract_name}-standard-input.json"
-
-        # 2. تعریف و ساخت پوشه خروجی
         output_dir = "verify-explorer-output"
-        os.makedirs(output_dir, exist_ok=True) # پوشه را می‌سازد و اگر از قبل باشد خطا نمی‌دهد
-
-        # 3. ساخت مسیر کامل فایل خروجی
+        os.makedirs(output_dir, exist_ok=True)
         output_path = os.path.join(output_dir, output_filename)
 
-        with open(output_path, 'w') as f:
-            json.dump(input_json, f, indent=4)
+        with open(output_path, 'w', encoding='utf-8') as f:
+            json.dump(input_json, f, indent=2, ensure_ascii=False)
         
-        print(f"✅ فایل '{output_path}' با موفقیت ساخته شد.")
-        print("شما می‌توانید این فایل را از بخش 'Artifacts' در گیت‌هاب اکشن دانلود کنید.")
+        print(f"✅ فایل '{output_path}' با موفقیت و با فرمت صحیح ساخته شد.")
 
     except Exception as e:
         print(f"❌ خطایی در هنگام ساخت فایل JSON رخ داد: {e}")
