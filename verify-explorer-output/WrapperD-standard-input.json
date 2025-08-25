@@ -1,0 +1,29 @@
+{
+  "language": "Solidity",
+  "sources": {
+    "contracts/WrapperD.sol": {
+      "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.20;\n\n// An interface for the WarpedParsDToken, which we now call WrapperDToken\ninterface IWrapperDToken {\n    function mint(address to, uint256 amount) external;\n    function burn(address from, uint256 amount) external;\n}\n\n// Provides information about the current execution context\nabstract contract Context {\n    function _msgSender() internal view virtual returns (address) {\n        return msg.sender;\n    }\n}\n\n// Provides basic authorization control functions\nabstract contract Ownable is Context {\n    address private _owner;\n    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);\n\n    constructor(address initialOwner) {\n        _transferOwnership(initialOwner);\n    }\n\n    function owner() public view virtual returns (address) {\n        return _owner;\n    }\n\n    modifier onlyOwner() {\n        require(owner() == _msgSender(), \"Ownable: caller is not the owner\");\n        _;\n    }\n\n    function transferOwnership(address newOwner) public virtual onlyOwner {\n        require(newOwner != address(0), \"Ownable: new owner is the zero address\");\n        _transferOwnership(newOwner);\n    }\n\n    function _transferOwnership(address newOwner) internal virtual {\n        address oldOwner = _owner;\n        _owner = newOwner;\n        emit OwnershipTransferred(oldOwner, newOwner);\n    }\n}\n\n/**\n * @title WrapperD\n * @dev Securely holds native currency and mints/burns a corresponding ERC20 token (wDT).\n * All functions are owned and called by the central Hub contract.\n */\ncontract WrapperD is Ownable {\n    // --- State Variables ---\n\n    IWrapperDToken public immutable wrapperDToken;\n    uint256 public totalWrapped;\n\n    // --- Events ---\n\n    event Wrapped(address indexed user, uint256 amount);\n    event Unwrapped(address indexed user, uint256 amount);\n\n    // --- Constructor ---\n\n    constructor(address _wrapperDTokenAddress, address _initialOwner) Ownable(_initialOwner) {\n        require(_wrapperDTokenAddress != address(0), \"WrapperD: Invalid token address\");\n        wrapperDToken = IWrapperDToken(_wrapperDTokenAddress);\n    }\n\n    // --- Core Logic (Callable only by Hub) ---\n\n    /**\n     * @dev Wraps the native token sent with the transaction.\n     * Mints an equal amount of wDT to the user.\n     * @param _user The original user who initiated the transaction via the Hub.\n     */\n    function wrap(address _user) external onlyOwner payable {\n        uint256 amount = msg.value;\n        require(amount > 0, \"WrapperD: Cannot wrap 0\");\n\n        totalWrapped += amount;\n        wrapperDToken.mint(_user, amount);\n\n        emit Wrapped(_user, amount);\n    }\n\n    /**\n     * @dev Unwraps a specified amount of wDT.\n     * Burns the user's wDT and returns an equal amount of the native token.\n     * @param _user The original user who initiated the transaction via the Hub.\n     * @param _amount The amount of wDT to unwrap.\n     */\n    function unwrap(address _user, uint256 _amount) external onlyOwner {\n        require(_amount > 0, \"WrapperD: Cannot unwrap 0\");\n        \n        totalWrapped -= _amount;\n        wrapperDToken.burn(_user, _amount);\n        \n        // Securely transfer the native token back to the user\n        payable(_user).transfer(_amount);\n        \n        emit Unwrapped(_user, _amount);\n    }\n}\n"
+    }
+  },
+  "settings": {
+    "optimizer": {
+      "enabled": false,
+      "runs": 200
+    },
+    "outputSelection": {
+      "*": {
+        "*": [
+          "abi",
+          "evm.bytecode",
+          "evm.deployedBytecode",
+          "evm.methodIdentifiers",
+          "metadata"
+        ]
+      }
+    },
+    "metadata": {
+      "useLiteralContent": true
+    },
+    "libraries": {}
+  }
+}
