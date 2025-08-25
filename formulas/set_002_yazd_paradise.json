@@ -1,0 +1,59 @@
+{
+  "name": "مجموعه 002: دیپلوی کامل Yazd Paradise",
+  "description": "چهار قرارداد اصلی را دیپلوی کرده و مالکیت‌ها را برای فعال‌سازی سیستم تنظیم می‌کند.",
+  "steps": [
+    {
+      "step": 1,
+      "action": "deploy",
+      "contractName": "ParsToken",
+      "source": "contracts/ParsToken.sol",
+      "args": ["{{deployer.address}}"]
+    },
+    {
+      "step": 2,
+      "action": "deploy",
+      "contractName": "YazdParadiseNFT",
+      "source": "contracts/YazdParadiseNFT.sol",
+      "args": ["{{deployer.address}}"]
+    },
+    {
+      "step": 3,
+      "action": "deploy",
+      "contractName": "MainContract",
+      "source": "contracts/MainContract.sol",
+      "args": [
+        "{{YazdParadiseNFT.address}}",
+        "{{ParsToken.address}}",
+        "{{deployer.address}}"
+      ]
+    },
+    {
+      "step": 4,
+      "action": "deploy",
+      "contractName": "InteractFeeProxy",
+      "source": "contracts/InteractFeeProxy.sol",
+      "args": ["{{MainContract.address}}"]
+    },
+    {
+      "step": 5,
+      "action": "call_function",
+      "contractName": "ParsToken",
+      "function": "transferOwnership",
+      "args": ["{{MainContract.address}}"]
+    },
+    {
+      "step": 6,
+      "action": "call_function",
+      "contractName": "YazdParadiseNFT",
+      "function": "transferOwnership",
+      "args": ["{{MainContract.address}}"]
+    },
+    {
+      "step": 7,
+      "action": "call_function",
+      "contractName": "MainContract",
+      "function": "transferOwnership",
+      "args": ["{{InteractFeeProxy.address}}"]
+    }
+  ]
+}
