@@ -105,7 +105,7 @@ def execute_formula(web3, account, formula_path):
         
         print(f"\n--- اجرای مرحله {step_num}: '{action}' برای '{step['contractName']}' ---")
         
-        # ۱. گرفتن جدیدترین nonce از شبکه برای شروع این مرحله
+        # گرفتن جدیدترین nonce از شبکه برای شروع این مرحله
         current_nonce = web3.eth.get_transaction_count(account.address)
         print(f"⛓️ Nonce اولیه برای این مرحله: {current_nonce}")
 
@@ -159,17 +159,17 @@ def execute_formula(web3, account, formula_path):
                 break # <-- خروج از حلقه تلاش مجدد در صورت موفقیت
 
             except Web3RPCError as e:
-                # ۲. اگر خطای nonce بود، nonce را یکی بالا ببر و دوباره امتحان کن
+                # اگر خطای nonce بود، nonce را یکی بالا ببر و دوباره امتحان کن
                 error_message = str(e).lower()
                 if ('nonce too low' in error_message or 'replacement transaction underpriced' in error_message):
                     print(f"⚠️ خطای Nonce با شماره {current_nonce} دریافت شد. تلاش مجدد با شماره بعدی...")
-                    current_nonce += 1 # <-- افزایش دستی nonce برای تلاش مجدد
-                    if i == max_retries - 1:
+                    current_nonce += 1 # افزایش دستی nonce برای تلاش مجدد
+                    if i == max_retries - 1: # اگر آخرین تلاش بود، خطا را نمایش بده و خارج شو
                         raise e
                     time.sleep(1) # یک ثانیه تاخیر قبل از تلاش مجدد
-                else:
+                else: # اگر خطای دیگری بود، فوراً خارج شو
                     raise e
-            except Exception as e:
+            except Exception as e: # برای خطاهای دیگر
                 print(f"❌ یک خطای پیش‌بینی نشده رخ داد.")
                 raise e
 
