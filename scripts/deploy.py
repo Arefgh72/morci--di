@@ -5,13 +5,12 @@ import re
 from web3 import Web3
 import solcx
 
-# --- ۱. بخش تنظیمات و اتصال به شبکه ---
+# --- ۱. بخش تنظیمات و اتصال ---
 
 def setup(network_id):
     """
-    اطلاعات شبکه را از فایل JSON می‌خواند و بر اساس ID ورودی به آن متصل می‌شود.
+    اطلاعات شبکه را از JSON می‌خواند، به شبکه وصل شده و محیط را آماده می‌کند.
     """
-    # نصب خودکار کامپایلر سالیدیتی
     try:
         solcx.install_solc(version='0.8.20')
         solcx.set_solc_version('0.8.20')
@@ -20,7 +19,6 @@ def setup(network_id):
         print(f"⚠️ خطایی در آماده‌سازی کامپایلر Solc رخ داد: {e}")
         sys.exit(1)
 
-    # خواندن اطلاعات شبکه‌ها از فایل
     try:
         with open('networks.json', 'r') as f:
             networks = json.load(f)
@@ -28,7 +26,6 @@ def setup(network_id):
         print("❌ خطا: فایل networks.json در ریشه پروژه پیدا نشد.")
         sys.exit(1)
 
-    # پیدا کردن شبکه مورد نظر بر اساس ID
     selected_network = next((net for net in networks if net['id'] == network_id), None)
     
     if not selected_network:
@@ -38,14 +35,12 @@ def setup(network_id):
     rpc_url = selected_network['rpc_url']
     print(f"🌍 در حال اتصال به شبکه: {selected_network['displayName']} ({rpc_url})")
 
-    # خواندن کلید خصوصی از GitHub Secrets
     try:
         private_key = os.environ["PRIVATE_KEY"]
     except KeyError:
         print("❌ خطا: متغیر PRIVATE_KEY در GitHub Secrets پیدا نشد.")
         sys.exit(1)
 
-    # اتصال به شبکه بلاکچین
     web3 = Web3(Web3.HTTPProvider(rpc_url))
     if not web3.is_connected():
         print(f"❌ خطا در اتصال به شبکه.")
@@ -55,19 +50,18 @@ def setup(network_id):
     web3.eth.default_account = account.address
 
     print(f"✅ با موفقیت به شبکه متصل شد.")
-    print(f"👤 آدرس دیپلوی کننده (Deployer): {account.address}")
+    print(f"👤 آدرس دیپلوی کننده: {account.address}")
     
     return web3, account
 
-# --- ۲. بخش موتور اجرایی ---
+# --- ۲. موتور اجرایی ---
 
 def resolve_args(args, context):
     """
-    آرگومان‌ها را بررسی کرده و متغیرهایی مثل {{ContractName.address}} یا {{deployer.address}} را با مقادیر واقعی جایگزین می‌کند.
+    متغیرهای داخل آرگومان‌ها مانند {{ContractName.address}} را جایگزین می‌کند.
     """
     resolved = []
-    # الگو تمام متغیرهای .address را پیدا می‌کند
-    pattern = re.compile(r"\{\{([a-zA-Z0_9_]+)\.address\}\}")
+    pattern = re.compile(r"\{\{([a-zA-Z0-9_]+)\.address\}\}")
 
     for arg in args:
         if isinstance(arg, str):
@@ -78,7 +72,7 @@ def resolve_args(args, context):
                     resolved.append(context[object_name]["address"])
                     print(f"🔄 متغیر '{arg}' با آدرس '{context[object_name]['address']}' جایگزین شد.")
                 else:
-                    print(f"❌ خطا: آدرس '{object_name}' در کانتکست پیدا نشد.")
+                    print(f"❌ خطا: آدرس برای '{object_name}' در کانتکست پیدا نشد.")
                     sys.exit(1)
             else:
                 resolved.append(arg)
@@ -88,7 +82,7 @@ def resolve_args(args, context):
 
 def execute_formula(web3, account, formula_path):
     """
-    فایل دستورالعمل JSON را می‌خواند و مراحل آن را با مدیریت صحیح nonce اجرا می‌کند.
+    فایل دستورالعمل JSON را با استعلام لحظه‌ای nonce برای هر تراکنش اجرا می‌کند.
     """
     try:
         with open(formula_path, 'r') as f:
@@ -103,15 +97,19 @@ def execute_formula(web3, account, formula_path):
     deployment_context['deployer'] = {'address': account.address}
     print(f"🔧 کانتکست اولیه با آدرس دیپلوی‌کننده تنظیم شد.")
 
-    # --- اصلاح کلیدی: گرفتن nonce اولیه فقط یک بار قبل از حلقه ---
-    nonce = web3.eth.get_transaction_count(account.address)
-    print(f"⛓️ Nonce اولیه برابر با: {nonce} تنظیم شد.")
-
     for step in sorted(formula["steps"], key=lambda s: s['step']):
         action = step["action"]
         step_num = step["step"]
         
         print(f"\n--- اجرای مرحله {step_num}: '{action}' برای '{step['contractName']}' ---")
+
+        # --- اصلاح نهایی و کلیدی: گرفتن جدیدترین nonce از شبکه قبل از هر تراکنش ---
+        try:
+            current_nonce = web3.eth.get_transaction_count(account.address)
+            print(f"⛓️ Nonce جدید از شبکه گرفته شد: {current_nonce}")
+        except Exception as e:
+            print(f"❌ خطای گرفتن nonce از شبکه: {e}")
+            sys.exit(1)
 
         if action == "deploy":
             contract_name = step["contractName"]
@@ -125,10 +123,9 @@ def execute_formula(web3, account, formula_path):
             
             Contract = web3.eth.contract(abi=abi, bytecode=bytecode)
             
-            # --- اصلاح کلیدی: استفاده از nonce مدیریت شده دستی ---
             tx = Contract.constructor(*constructor_args).build_transaction({
                 "from": account.address,
-                "nonce": nonce,
+                "nonce": current_nonce
             })
             
             signed_tx = web3.eth.account.sign_transaction(tx, private_key=account.key)
@@ -148,7 +145,7 @@ def execute_formula(web3, account, formula_path):
             function_args = resolve_args(step.get("args", []), deployment_context)
             
             if contract_name not in deployment_context:
-                print(f"❌ خطا: قرارداد '{contract_name}' برای فراخوانی تابع، قبلا دیپلوی نشده است.")
+                print(f"❌ خطا: قرارداد '{contract_name}' برای فراخوانی تابع پیدا نشد.")
                 sys.exit(1)
             
             target_contract_info = deployment_context[contract_name]
@@ -156,10 +153,9 @@ def execute_formula(web3, account, formula_path):
             
             func = getattr(contract_instance.functions, function_name)
 
-            # --- اصلاح کلیدی: استفاده از nonce مدیریت شده دستی ---
             tx = func(*function_args).build_transaction({
                 "from": account.address,
-                "nonce": nonce,
+                "nonce": current_nonce
             })
 
             signed_tx = web3.eth.account.sign_transaction(tx, private_key=account.key)
@@ -172,12 +168,9 @@ def execute_formula(web3, account, formula_path):
         else:
             print(f"⚠️ اکشن ناشناخته '{action}' در مرحله {step_num}. از این مرحله عبور می‌کنیم.")
 
-        # --- اصلاح کلیدی: اضافه کردن یک واحد به nonce برای مرحله بعد ---
-        nonce += 1
-
     print(f"\n🎉 تمام مراحل دستورالعمل '{formula['name']}' با موفقیت انجام شد.")
 
-# --- ۳. بخش اصلی برنامه ---
+# --- ۳. برنامه اصلی ---
 
 def main():
     if len(sys.argv) < 3:
