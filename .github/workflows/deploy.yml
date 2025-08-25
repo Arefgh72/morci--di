@@ -11,7 +11,7 @@ on:
         description: 'ID شبکه از فایل networks.json (مثال: Ethereum Sepolia-11155111)'
         required: true
         type: string
-        default: 'Ethereum Sepolia-11155111'
+        default: ''
 
 jobs:
   deploy:
