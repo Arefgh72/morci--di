@@ -67,7 +67,7 @@ def resolve_args(args, context):
     """
     resolved = []
     # الگو تمام متغیرهای .address را پیدا می‌کند
-    pattern = re.compile(r"\{\{([a-zA-Z0-9_]+)\.address\}\}")
+    pattern = re.compile(r"\{\{([a-zA-Z0_9_]+)\.address\}\}")
 
     for arg in args:
         if isinstance(arg, str):
@@ -88,7 +88,7 @@ def resolve_args(args, context):
 
 def execute_formula(web3, account, formula_path):
     """
-    فایل دستورالعمل JSON را می‌خواند و مراحل آن را اجرا می‌کند.
+    فایل دستورالعمل JSON را می‌خواند و مراحل آن را با مدیریت صحیح nonce اجرا می‌کند.
     """
     try:
         with open(formula_path, 'r') as f:
@@ -102,6 +102,10 @@ def execute_formula(web3, account, formula_path):
     deployment_context = {}
     deployment_context['deployer'] = {'address': account.address}
     print(f"🔧 کانتکست اولیه با آدرس دیپلوی‌کننده تنظیم شد.")
+
+    # --- اصلاح کلیدی: گرفتن nonce اولیه فقط یک بار قبل از حلقه ---
+    nonce = web3.eth.get_transaction_count(account.address)
+    print(f"⛓️ Nonce اولیه برابر با: {nonce} تنظیم شد.")
 
     for step in sorted(formula["steps"], key=lambda s: s['step']):
         action = step["action"]
@@ -120,13 +124,14 @@ def execute_formula(web3, account, formula_path):
             bytecode = contract_interface['bin']
             
             Contract = web3.eth.contract(abi=abi, bytecode=bytecode)
+            
+            # --- اصلاح کلیدی: استفاده از nonce مدیریت شده دستی ---
             tx = Contract.constructor(*constructor_args).build_transaction({
                 "from": account.address,
-                "nonce": web3.eth.get_transaction_count(account.address),
+                "nonce": nonce,
             })
-            signed_tx = web3.eth.account.sign_transaction(tx, private_key=account.key)
             
-            # ✅ رفع خطا: تغییر .rawTransaction به .raw_transaction
+            signed_tx = web3.eth.account.sign_transaction(tx, private_key=account.key)
             tx_hash = web3.eth.send_raw_transaction(signed_tx.raw_transaction)
             
             print(f"⏳ در حال دیپلوی قرارداد... هش تراکنش: {tx_hash.hex()}")
@@ -150,13 +155,14 @@ def execute_formula(web3, account, formula_path):
             contract_instance = web3.eth.contract(address=target_contract_info["address"], abi=target_contract_info["abi"])
             
             func = getattr(contract_instance.functions, function_name)
+
+            # --- اصلاح کلیدی: استفاده از nonce مدیریت شده دستی ---
             tx = func(*function_args).build_transaction({
                 "from": account.address,
-                "nonce": web3.eth.get_transaction_count(account.address),
+                "nonce": nonce,
             })
+
             signed_tx = web3.eth.account.sign_transaction(tx, private_key=account.key)
-            
-            # ✅ رفع خطا: تغییر .rawTransaction به .raw_transaction
             tx_hash = web3.eth.send_raw_transaction(signed_tx.raw_transaction)
 
             print(f"⏳ در حال فراخوانی تابع '{function_name}'... هش تراکنش: {tx_hash.hex()}")
@@ -165,6 +171,9 @@ def execute_formula(web3, account, formula_path):
         
         else:
             print(f"⚠️ اکشن ناشناخته '{action}' در مرحله {step_num}. از این مرحله عبور می‌کنیم.")
+
+        # --- اصلاح کلیدی: اضافه کردن یک واحد به nonce برای مرحله بعد ---
+        nonce += 1
 
     print(f"\n🎉 تمام مراحل دستورالعمل '{formula['name']}' با موفقیت انجام شد.")
 
