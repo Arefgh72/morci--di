@@ -4,6 +4,7 @@ import json
 import re
 from web3 import Web3
 import solcx
+from web3.exceptions import Web3RPCError
 
 # --- ۱. بخش تنظیمات و اتصال ---
 
@@ -82,7 +83,7 @@ def resolve_args(args, context):
 
 def execute_formula(web3, account, formula_path):
     """
-    فایل دستورالعمل JSON را با استعلام لحظه‌ای nonce برای هر تراکنش اجرا می‌کند.
+    فایل دستورالعمل JSON را با منطق پیشرفته nonce اجرا می‌کند.
     """
     try:
         with open(formula_path, 'r') as f:
@@ -102,71 +103,74 @@ def execute_formula(web3, account, formula_path):
         step_num = step["step"]
         
         print(f"\n--- اجرای مرحله {step_num}: '{action}' برای '{step['contractName']}' ---")
-
-        # --- اصلاح نهایی و کلیدی: گرفتن جدیدترین nonce از شبکه قبل از هر تراکنش ---
-        try:
-            current_nonce = web3.eth.get_transaction_count(account.address)
-            print(f"⛓️ Nonce جدید از شبکه گرفته شد: {current_nonce}")
-        except Exception as e:
-            print(f"❌ خطای گرفتن nonce از شبکه: {e}")
-            sys.exit(1)
-
-        if action == "deploy":
-            contract_name = step["contractName"]
-            source_path = step["source"]
-            constructor_args = resolve_args(step.get("args", []), deployment_context)
-
-            compiled_sol = solcx.compile_files([source_path], output_values=["abi", "bin"])
-            contract_interface = compiled_sol[f'{source_path}:{contract_name}']
-            abi = contract_interface['abi']
-            bytecode = contract_interface['bin']
-            
-            Contract = web3.eth.contract(abi=abi, bytecode=bytecode)
-            
-            tx = Contract.constructor(*constructor_args).build_transaction({
-                "from": account.address,
-                "nonce": current_nonce
-            })
-            
-            signed_tx = web3.eth.account.sign_transaction(tx, private_key=account.key)
-            tx_hash = web3.eth.send_raw_transaction(signed_tx.raw_transaction)
-            
-            print(f"⏳ در حال دیپلوی قرارداد... هش تراکنش: {tx_hash.hex()}")
-            tx_receipt = web3.eth.wait_for_transaction_receipt(tx_hash)
-            
-            contract_address = tx_receipt.contractAddress
-            print(f"✅ قرارداد '{contract_name}' با موفقیت در آدرس {contract_address} دیپلوی شد.")
-            
-            deployment_context[contract_name] = {"address": contract_address, "abi": abi}
-
-        elif action == "call_function":
-            contract_name = step["contractName"]
-            function_name = step["function"]
-            function_args = resolve_args(step.get("args", []), deployment_context)
-            
-            if contract_name not in deployment_context:
-                print(f"❌ خطا: قرارداد '{contract_name}' برای فراخوانی تابع پیدا نشد.")
-                sys.exit(1)
-            
-            target_contract_info = deployment_context[contract_name]
-            contract_instance = web3.eth.contract(address=target_contract_info["address"], abi=target_contract_info["abi"])
-            
-            func = getattr(contract_instance.functions, function_name)
-
-            tx = func(*function_args).build_transaction({
-                "from": account.address,
-                "nonce": current_nonce
-            })
-
-            signed_tx = web3.eth.account.sign_transaction(tx, private_key=account.key)
-            tx_hash = web3.eth.send_raw_transaction(signed_tx.raw_transaction)
-
-            print(f"⏳ در حال فراخوانی تابع '{function_name}'... هش تراکنش: {tx_hash.hex()}")
-            web3.eth.wait_for_transaction_receipt(tx_hash)
-            print(f"✅ تابع '{function_name}' روی قرارداد '{contract_name}' با موفقیت اجرا شد.")
         
-        else:
-            print(f"⚠️ اکشن ناشناخته '{action}' در مرحله {step_num}. از این مرحله عبور می‌کنیم.")
+        # --- منطق نهایی و صحیح برای ارسال تراکنش با قابلیت تلاش مجدد ---
+        max_retries = 3
+        for i in range(max_retries):
+            try:
+                # ۱. گرفتن جدیدترین nonce از شبکه قبل از هر تلاش
+                current_nonce = web3.eth.get_transaction_count(account.address)
+                print(f"⛓️ تلاش شماره {i+1}: استعلام Nonce از شبکه: {current_nonce}")
+
+                if action == "deploy":
+                    # ... (بخش ساخت تراکنش دیپلوی) ...
+                    contract_name = step["contractName"]
+                    source_path = step["source"]
+                    constructor_args = resolve_args(step.get("args", []), deployment_context)
+                    compiled_sol = solcx.compile_files([source_path], output_values=["abi", "bin"])
+                    contract_interface = compiled_sol[f'{source_path}:{contract_name}']
+                    abi = contract_interface['abi']
+                    bytecode = contract_interface['bin']
+                    Contract = web3.eth.contract(abi=abi, bytecode=bytecode)
+                    tx_data = Contract.constructor(*constructor_args).build_transaction({
+                        "from": account.address, "nonce": current_nonce
+                    })
+
+                elif action == "call_function":
+                    # ... (بخش ساخت تراکنش فراخوانی تابع) ...
+                    contract_name = step["contractName"]
+                    function_name = step["function"]
+                    function_args = resolve_args(step.get("args", []), deployment_context)
+                    target_contract_info = deployment_context[contract_name]
+                    contract_instance = web3.eth.contract(address=target_contract_info["address"], abi=target_contract_info["abi"])
+                    func = getattr(contract_instance.functions, function_name)
+                    tx_data = func(*function_args).build_transaction({
+                        "from": account.address, "nonce": current_nonce
+                    })
+                else:
+                    print(f"⚠️ اکشن ناشناخته '{action}'.")
+                    break # از حلقه تلاش مجدد خارج شو چون اکشن تعریف نشده
+
+                # ۲. امضا و ارسال تراکنش
+                signed_tx = web3.eth.account.sign_transaction(tx_data, private_key=account.key)
+                tx_hash = web3.eth.send_raw_transaction(signed_tx.raw_transaction)
+                print(f"⏳ تراکنش با Nonce {current_nonce} ارسال شد... هش: {tx_hash.hex()}")
+                
+                # ۳. انتظار برای تایید تراکنش
+                tx_receipt = web3.eth.wait_for_transaction_receipt(tx_hash, timeout=300)
+
+                # اگر تراکنش موفق بود، اطلاعات را ثبت کن و از حلقه تلاش مجدد خارج شو
+                if action == "deploy":
+                    contract_address = tx_receipt.contractAddress
+                    print(f"✅ قرارداد '{contract_name}' با موفقیت در آدرس {contract_address} دیپلوی شد.")
+                    deployment_context[contract_name] = {"address": contract_address, "abi": abi}
+                elif action == "call_function":
+                    print(f"✅ تابع '{function_name}' روی قرارداد '{contract_name}' با موفقیت اجرا شد.")
+                
+                break # <-- خروج از حلقه تلاش مجدد در صورت موفقیت
+
+            except Web3RPCError as e:
+                # ۴. اگر خطای مربوط به nonce بود، اجازه بده حلقه برای تلاش مجدد ادامه پیدا کند
+                error_message = str(e).lower()
+                if ('nonce too low' in error_message or 'replacement transaction underpriced' in error_message):
+                    print(f"⚠️ خطای Nonce دریافت شد. تلاش مجدد ({i+1}/{max_retries})...")
+                    if i == max_retries - 1: # اگر آخرین تلاش بود، خطا را نمایش بده و خارج شو
+                        raise e
+                else: # اگر خطای دیگری بود، فوراً خارج شو
+                    raise e
+            except Exception as e: # برای خطاهای دیگر
+                print(f"❌ یک خطای پیش‌بینی نشده رخ داد.")
+                raise e
 
     print(f"\n🎉 تمام مراحل دستورالعمل '{formula['name']}' با موفقیت انجام شد.")
 
@@ -175,7 +179,6 @@ def execute_formula(web3, account, formula_path):
 def main():
     if len(sys.argv) < 3:
         print("❌ خطا: ورودی‌ها کامل نیستند.")
-        print("مثال: python scripts/deploy.py <formula_file.json> <network_id>")
         sys.exit(1)
     
     formula_filename = sys.argv[1]
