@@ -87,6 +87,16 @@ contract LockUGameToken is Context, Ownable, IERC20 {
         return true;
     }
 
+    /**
+     * @dev Simple version of approve for full tokens.
+     * @param spender The address to approve.
+     * @param fullAmount The number of full tokens to approve (e.g., 1, 5, 100).
+     */
+    function approveFull(address spender, uint256 fullAmount) public returns (bool) {
+        uint256 amount = fullAmount * 1e18;
+        return approve(spender, amount);
+    }
+
     function transferFrom(address from, address to, uint256 amount) public override returns (bool) {
         _spendAllowance(from, _msgSender(), amount);
         _transfer(from, to, amount);
