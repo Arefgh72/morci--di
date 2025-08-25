@@ -4,9 +4,7 @@ pragma solidity ^0.8.20;
 /**
  * @title Context
  * @dev Provides information about the current execution context, including the
- * sender of the transaction and its data. While these are generally available
- * via msg.sender and msg.data, they can be used to direct gastronomic flows
- * in smart contracts.
+ * sender of the transaction and its data.
  */
 abstract contract Context {
     function _msgSender() internal view virtual returns (address) {
@@ -16,9 +14,8 @@ abstract contract Context {
 
 /**
  * @title Ownable
- * @dev The Ownable contract has an owner address, and provides basic authorization control
- * functions, this is used to restrict access to certain functions to the owner of the contract.
- * This contract is based on OpenZeppelin's Ownable contract.
+ * @dev Provides basic authorization control functions to restrict access to
+ * certain functions to the owner of the contract.
  */
 abstract contract Ownable is Context {
     address private _owner;
@@ -48,18 +45,7 @@ abstract contract Ownable is Context {
     }
 
     /**
-     * @dev Leaves the contract without owner. It will not be possible to call
-     * `onlyOwner` functions anymore. Can only be called by the current owner.
-     * NOTE: Renouncing ownership will leave the contract without an owner,
-     * thereby removing any functionality that is only available to the owner.
-     */
-    function renounceOwnership() public virtual onlyOwner {
-        _transferOwnership(address(0));
-    }
-
-    /**
      * @dev Transfers ownership of the contract to a new account (`newOwner`).
-     * Can only be called by the current owner.
      */
     function transferOwnership(address newOwner) public virtual onlyOwner {
         require(newOwner != address(0), "Ownable: new owner is the zero address");
@@ -126,6 +112,16 @@ contract UGameToken is Context, Ownable, IERC20 {
     function approve(address spender, uint256 amount) public override returns (bool) {
         _approve(_msgSender(), spender, amount);
         return true;
+    }
+
+    /**
+     * @dev Simple version of approve for full tokens.
+     * @param spender The address to approve.
+     * @param fullAmount The number of full tokens to approve (e.g., 1, 5, 100).
+     */
+    function approveFull(address spender, uint256 fullAmount) public returns (bool) {
+        uint256 amount = fullAmount * 1e18;
+        return approve(spender, amount);
     }
 
     function transferFrom(address from, address to, uint256 amount) public override returns (bool) {
