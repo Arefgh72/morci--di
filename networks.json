@@ -1,0 +1,34 @@
+[
+  {
+    "id": "Ethereum Sepolia-11155111",
+    "displayName": "Ethereum Sepolia",
+    "network_name": "Ethereum Sepolia",
+    "rpc_url": "https://ethereum-sepolia-rpc.publicnode.com",
+    "chain_id": "11155111",
+    "explorer_url": "https://sepolia.etherscan.io"
+  },
+  {
+    "id": "Monad Testnet-10143",
+    "displayName": "Monad Testnet",
+    "network_name": "Monad Testnet",
+    "rpc_url": "https://testnet-rpc.monad.xyz",
+    "chain_id": "10143",
+    "explorer_url": "https://explorer.testnet.monad.xyz"
+  },
+  {
+    "id": "Injective Testnet-1439",
+    "displayName": "Injective Testnet",
+    "network_name": "Injective Testnet",
+    "rpc_url": "https://k8s.testnet.json-rpc.injective.network/",
+    "chain_id": "1439",
+    "explorer_url": "https://testnet.blockscout.injective.network/blocks"
+  },
+  {
+    "id": "0G-Galileo-Testnet-16601",
+    "displayName": "0G-Galileo-Testnet",
+    "network_name": "0G-Galileo-Testnet",
+    "rpc_url": "https://evmrpc-testnet.0g.ai/",
+    "chain_id": "16601",
+    "explorer_url": "https://chainscan-galileo.0g.ai/"
+  }
+]
