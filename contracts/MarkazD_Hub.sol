@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-// --- Interfaces for the contracts the Hub interacts with ---
+// --- اینترفیس برای قراردادهایی که هاب با آن‌ها تعامل می‌کند ---
 
 interface IWrapperD {
     function wrap(address _user) external payable;
@@ -18,7 +18,7 @@ interface IWrapperDToken {
     function transferFrom(address from, address to, uint256 amount) external returns (bool);
 }
 
-// --- Ownable contract for access control ---
+// --- قرارداد Ownable برای کنترل دسترسی ---
 
 abstract contract Context {
     function _msgSender() internal view virtual returns (address) { return msg.sender; }
@@ -41,30 +41,18 @@ abstract contract Ownable is Context {
     }
 }
 
-
-/**
- * @title MarkazD_Hub
- * @dev The central entry point for all user interactions with the ecosystem.
- * It acts as a proxy to the WrapperD and Game contracts.
- */
 contract MarkazD_Hub is Ownable {
-    // --- State Variables ---
-
     IWrapperD public immutable wrapperD;
     IGameContract public immutable gameContract;
     IWrapperDToken public immutable wrapperDToken; 
     uint256 private constant DECIMALS = 1e18;
 
-    // --- Events ---
-    
     event Wrapped(address indexed user, uint256 amount);
     event Unwrapped(address indexed user, uint256 amount);
     event LockedInGame(address indexed user, uint256 amount);
     event UnlockedFromGame(address indexed user, uint256 amount);
     event RewardClaimed(address indexed user);
     
-    // --- Constructor ---
-
     constructor(
         address _wrapperDAddress,
         address _gameContractAddress,
@@ -76,81 +64,49 @@ contract MarkazD_Hub is Ownable {
         wrapperDToken = IWrapperDToken(_wrapperDTokenAddress);
     }
 
-    // --- Public User-Facing Functions ---
+    // --- توابع عمومی برای کاربران ---
 
-    /**
-     * @dev Wraps native currency into wDT. User sends native currency with the call.
-     */
     function wrap() external payable {
         require(msg.value > 0, "Hub: Cannot wrap 0");
-        // Forward the call and the native currency to the wrapper contract
         wrapperD.wrap{value: msg.value}(msg.sender);
         emit Wrapped(msg.sender, msg.value);
     }
 
-    /**
-     * @dev Unwraps wDT back to native currency. User must first approve this Hub contract to spend their wDT.
-     */
     function unwrap(uint256 _amount) external {
         require(_amount > 0, "Hub: Cannot unwrap 0");
-        // First, pull the user's wDT tokens to the WrapperD contract
         wrapperDToken.transferFrom(msg.sender, address(wrapperD), _amount);
-        // Then, call the unwrap function on the wrapper contract
         wrapperD.unwrap(msg.sender, _amount);
         emit Unwrapped(msg.sender, _amount);
     }
 
-    /**
-     * @dev Simple version of unwrap for full tokens.
-     * @param _fullAmount The number of full tokens to unwrap (e.g., 1, 5, 100).
-     */
     function unwrapFull(uint256 _fullAmount) external {
         uint256 amount = _fullAmount * DECIMALS;
-        unwrap(amount);
+        this.unwrap(amount); // <-- اصلاح شد
     }
 
-    /**
-     * @dev Locks wDT in the game. User must first approve this Hub contract to spend their wDT.
-     */
     function lockInGame(uint256 _amount) external {
         require(_amount > 0, "Hub: Cannot lock 0");
-        // Pull the user's wDT tokens to the GameContract to be locked
         wrapperDToken.transferFrom(msg.sender, address(gameContract), _amount);
-        // Then, call the lock function on the game contract
         gameContract.lock(msg.sender, _amount);
         emit LockedInGame(msg.sender, _amount);
     }
 
-    /**
-     * @dev Simple version of lockInGame for full tokens.
-     * @param _fullAmount The number of full tokens to lock (e.g., 1, 5, 100).
-     */
     function lockInGameFull(uint256 _fullAmount) external {
         uint256 amount = _fullAmount * DECIMALS;
-        lockInGame(amount);
+        this.lockInGame(amount); // <-- اصلاح شد
     }
     
-    /**
-     * @dev Unlocks wDT from the game by burning LUGAME tokens.
-     */
     function unlockFromGame(uint256 _amount) external {
         require(_amount > 0, "Hub: Cannot unlock 0");
         gameContract.unlock(msg.sender, _amount);
         emit UnlockedFromGame(msg.sender, _amount);
     }
 
-    /**
-     * @dev Simple version of unlockFromGame for full tokens.
-     * @param _fullAmount The number of full tokens to unlock (e.g., 1, 5, 100).
-     */
     function unlockFromGameFull(uint256 _fullAmount) external {
         uint256 amount = _fullAmount * DECIMALS;
-        unlockFromGame(amount);
+        this.unlockFromGame(amount); // <-- اصلاح شد
     }
 
-    /**
-     * @dev Claims the user's accumulated game rewards (UGAME).
-     */
     function claimGameReward() external {
         gameContract.claimReward();
         emit RewardClaimed(msg.sender);
