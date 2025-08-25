@@ -46,7 +46,7 @@ abstract contract Ownable is Context {
 contract GameContract is Ownable {
     // --- State Variables ---
 
-    IERC20Transferable public immutable warpedToken;  // The token to be locked (wPDT)
+    IERC20Transferable public immutable warpedToken;  // The token to be locked (wDT)
     IERC20Mintable public immutable lockToken;         // The receipt token for the game (LUGAME)
     IERC20Burnable public immutable lockTokenBurner;    // Same as lockToken, but using a burnable interface
     IERC20Mintable public immutable rewardToken;       // The reward token (UGAME)
@@ -109,7 +109,7 @@ contract GameContract is Ownable {
     
     function lock(address _user, uint256 _amount) external onlyOwner updateReward(_user) {
         require(_amount > 0, "GameContract: Cannot lock 0 tokens");
-        // Pull wPDT tokens from the user into this contract
+        // Pull wDT tokens from the user into this contract
         warpedToken.transferFrom(_user, address(this), _amount);
         // Mint an equal amount of LUGAME tokens for the user as a receipt
         lockToken.mint(_user, _amount);
@@ -120,7 +120,7 @@ contract GameContract is Ownable {
         require(_amount > 0, "GameContract: Cannot unlock 0 tokens");
         // Burn the user's LUGAME receipt tokens
         lockTokenBurner.burn(_user, _amount);
-        // Return the wPDT tokens to the user
+        // Return the wDT tokens to the user
         warpedToken.transfer(_user, _amount);
         emit Unlocked(_user, _amount);
     }
