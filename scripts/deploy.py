@@ -5,7 +5,7 @@ import re
 from web3 import Web3
 import solcx
 
-# --- ۱. بخش تنظیمات و اتصال به شبکه (تغییر یافته) ---
+# --- ۱. بخش تنظیمات و اتصال به شبکه ---
 
 def setup(network_id):
     """
@@ -55,29 +55,30 @@ def setup(network_id):
     web3.eth.default_account = account.address
 
     print(f"✅ با موفقیت به شبکه متصل شد.")
-    print(f"👤 آدرس دیپلوی کننده: {account.address}")
+    print(f"👤 آدرس دیپلوی کننده (Deployer): {account.address}")
     
     return web3, account
 
-# ... (بقیه توابع مثل resolve_args و execute_formula بدون تغییر باقی می‌مانند) ...
+# --- ۲. بخش موتور اجرایی ---
+
 def resolve_args(args, context):
     """
-    آرگومان‌ها را بررسی کرده و متغیرهایی مثل {{MyToken.address}} را با مقادیر واقعی جایگزین می‌کند.
+    آرگومان‌ها را بررسی کرده و متغیرهایی مثل {{ContractName.address}} یا {{deployer.address}} را با مقادیر واقعی جایگزین می‌کند.
     """
     resolved = []
-    # الگوی پیدا کردن متغیرها: {{ContractName.address}}
+    # الگو تمام متغیرهای .address را پیدا می‌کند
     pattern = re.compile(r"\{\{([a-zA-Z0-9_]+)\.address\}\}")
 
     for arg in args:
         if isinstance(arg, str):
             match = pattern.match(arg)
             if match:
-                contract_name = match.group(1)
-                if contract_name in context and "address" in context[contract_name]:
-                    resolved.append(context[contract_name]["address"])
-                    print(f"🔄 متغیر '{arg}' با آدرس '{context[contract_name]['address']}' جایگزین شد.")
+                object_name = match.group(1)
+                if object_name in context and "address" in context[object_name]:
+                    resolved.append(context[object_name]["address"])
+                    print(f"🔄 متغیر '{arg}' با آدرس '{context[object_name]['address']}' جایگزین شد.")
                 else:
-                    print(f"❌ خطا: آدرس قرارداد '{contract_name}' در مراحل قبلی پیدا نشد.")
+                    print(f"❌ خطا: آدرس '{object_name}' در کانتکست پیدا نشد.")
                     sys.exit(1)
             else:
                 resolved.append(arg)
@@ -100,15 +101,20 @@ def execute_formula(web3, account, formula_path):
     
     # برای ذخیره آدرس و ABI قراردادهای دیپلوی شده
     deployment_context = {}
+    
+    # *** تغییر کلیدی: اضافه کردن آدرس دیپلوی‌کننده به کانتکست ***
+    deployment_context['deployer'] = {'address': account.address}
+    print(f"🔧 کانتکست اولیه با آدرس دیپلوی‌کننده تنظیم شد.")
+
 
     for step in sorted(formula["steps"], key=lambda s: s['step']):
         action = step["action"]
         step_num = step["step"]
-        contract_name = step["contractName"]
         
-        print(f"\n--- اجرای مرحله {step_num}: '{action}' برای '{contract_name}' ---")
+        print(f"\n--- اجرای مرحله {step_num}: '{action}' برای '{step['contractName']}' ---")
 
         if action == "deploy":
+            contract_name = step["contractName"]
             source_path = step["source"]
             constructor_args = resolve_args(step.get("args", []), deployment_context)
 
@@ -137,6 +143,7 @@ def execute_formula(web3, account, formula_path):
             deployment_context[contract_name] = {"address": contract_address, "abi": abi}
 
         elif action == "call_function":
+            contract_name = step["contractName"]
             function_name = step["function"]
             function_args = resolve_args(step.get("args", []), deployment_context)
             
@@ -166,7 +173,7 @@ def execute_formula(web3, account, formula_path):
 
     print(f"\n🎉 تمام مراحل دستورالعمل '{formula['name']}' با موفقیت انجام شد.")
 
-# --- ۳. بخش اصلی برنامه (تغییر یافته) ---
+# --- ۳. بخش اصلی برنامه ---
 
 def main():
     if len(sys.argv) < 3:
@@ -175,11 +182,11 @@ def main():
         sys.exit(1)
     
     formula_filename = sys.argv[1]
-    network_id = sys.argv[2] # ورودی دوم برای ID شبکه
+    network_id = sys.argv[2]
     
     formula_path = os.path.join("formulas", formula_filename)
     
-    web3, account = setup(network_id) # ارسال ID شبکه به تابع setup
+    web3, account = setup(network_id)
     execute_formula(web3, account, formula_path)
 
 if __name__ == "__main__":
