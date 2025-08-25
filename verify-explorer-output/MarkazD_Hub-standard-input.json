@@ -1,0 +1,29 @@
+{
+  "language": "Solidity",
+  "sources": {
+    "contracts/MarkazD_Hub.sol": {
+      "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.20;\n\n// --- اینترفیس برای قراردادهایی که هاب با آن‌ها تعامل می‌کند ---\n\ninterface IWrapperD {\n    function wrap(address _user) external payable;\n    function unwrap(address _user, uint256 _amount) external;\n}\n\ninterface IGameContract {\n    function lock(address _user, uint256 _amount) external;\n    function unlock(address _user, uint256 _amount) external;\n    function claimReward() external;\n}\n\ninterface IWrapperDToken {\n    function transferFrom(address from, address to, uint256 amount) external returns (bool);\n}\n\n// --- قرارداد Ownable برای کنترل دسترسی ---\n\nabstract contract Context {\n    function _msgSender() internal view virtual returns (address) { return msg.sender; }\n}\n\nabstract contract Ownable is Context {\n    address private _owner;\n    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);\n    constructor(address initialOwner) { _transferOwnership(initialOwner); }\n    function owner() public view virtual returns (address) { return _owner; }\n    modifier onlyOwner() { require(owner() == _msgSender(), \"Ownable: caller is not the owner\"); _; }\n    function transferOwnership(address newOwner) public virtual onlyOwner {\n        require(newOwner != address(0), \"Ownable: new owner is the zero address\");\n        _transferOwnership(newOwner);\n    }\n    function _transferOwnership(address newOwner) internal virtual {\n        address oldOwner = _owner;\n        _owner = newOwner;\n        emit OwnershipTransferred(oldOwner, newOwner);\n    }\n}\n\ncontract MarkazD_Hub is Ownable {\n    IWrapperD public immutable wrapperD;\n    IGameContract public immutable gameContract;\n    IWrapperDToken public immutable wrapperDToken; \n    uint256 private constant DECIMALS = 1e18;\n\n    event Wrapped(address indexed user, uint256 amount);\n    event Unwrapped(address indexed user, uint256 amount);\n    event LockedInGame(address indexed user, uint256 amount);\n    event UnlockedFromGame(address indexed user, uint256 amount);\n    event RewardClaimed(address indexed user);\n    \n    constructor(\n        address _wrapperDAddress,\n        address _gameContractAddress,\n        address _wrapperDTokenAddress,\n        address _initialOwner\n    ) Ownable(_initialOwner) {\n        wrapperD = IWrapperD(_wrapperDAddress);\n        gameContract = IGameContract(_gameContractAddress);\n        wrapperDToken = IWrapperDToken(_wrapperDTokenAddress);\n    }\n\n    // --- توابع عمومی برای کاربران ---\n\n    function wrap() external payable {\n        require(msg.value > 0, \"Hub: Cannot wrap 0\");\n        wrapperD.wrap{value: msg.value}(msg.sender);\n        emit Wrapped(msg.sender, msg.value);\n    }\n\n    function unwrap(uint256 _amount) external {\n        require(_amount > 0, \"Hub: Cannot unwrap 0\");\n        wrapperDToken.transferFrom(msg.sender, address(wrapperD), _amount);\n        wrapperD.unwrap(msg.sender, _amount);\n        emit Unwrapped(msg.sender, _amount);\n    }\n\n    function unwrapFull(uint256 _fullAmount) external {\n        uint256 amount = _fullAmount * DECIMALS;\n        this.unwrap(amount); // <-- اصلاح شد\n    }\n\n    function lockInGame(uint256 _amount) external {\n        require(_amount > 0, \"Hub: Cannot lock 0\");\n        wrapperDToken.transferFrom(msg.sender, address(gameContract), _amount);\n        gameContract.lock(msg.sender, _amount);\n        emit LockedInGame(msg.sender, _amount);\n    }\n\n    function lockInGameFull(uint256 _fullAmount) external {\n        uint256 amount = _fullAmount * DECIMALS;\n        this.lockInGame(amount); // <-- اصلاح شد\n    }\n    \n    function unlockFromGame(uint256 _amount) external {\n        require(_amount > 0, \"Hub: Cannot unlock 0\");\n        gameContract.unlock(msg.sender, _amount);\n        emit UnlockedFromGame(msg.sender, _amount);\n    }\n\n    function unlockFromGameFull(uint256 _fullAmount) external {\n        uint256 amount = _fullAmount * DECIMALS;\n        this.unlockFromGame(amount); // <-- اصلاح شد\n    }\n\n    function claimGameReward() external {\n        gameContract.claimReward();\n        emit RewardClaimed(msg.sender);\n    }\n}\n"
+    }
+  },
+  "settings": {
+    "optimizer": {
+      "enabled": false,
+      "runs": 200
+    },
+    "outputSelection": {
+      "*": {
+        "*": [
+          "abi",
+          "evm.bytecode",
+          "evm.deployedBytecode",
+          "evm.methodIdentifiers",
+          "metadata"
+        ]
+      }
+    },
+    "metadata": {
+      "useLiteralContent": true
+    },
+    "libraries": {}
+  }
+}
