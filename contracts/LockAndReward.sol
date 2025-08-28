@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-// Part 1: Preliminaries
+// --- Interfaces, Libraries, and Base Contracts ---
+
 interface IGGOToken {
     function mint(address to, uint256 amount) external;
 }
@@ -26,7 +27,6 @@ abstract contract Context {
     }
 }
 
-// Part 2: Full ERC721 Implementation (Integrated)
 interface IERC165 {
     function supportsInterface(bytes4 interfaceId) external view returns (bool);
 }
@@ -62,7 +62,34 @@ interface IERC721 is IERC165 {
     function isApprovedForAll(address owner, address operator) external view returns (bool);
 }
 
+abstract contract Ownable is Context {
+    address private _owner;
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+    constructor() {
+        _transferOwnership(_msgSender());
+    }
+    modifier onlyOwner() {
+        require(owner() == _msgSender(), "Ownable: caller is not the owner");
+        _;
+    }
+    function owner() public view virtual returns (address) {
+        return _owner;
+    }
+    function transferOwnership(address newOwner) public virtual onlyOwner {
+        require(newOwner != address(0), "Ownable: new owner is the zero address");
+        _transferOwnership(newOwner);
+    }
+    function _transferOwnership(address newOwner) internal virtual {
+        address oldOwner = _owner;
+        _owner = newOwner;
+        emit OwnershipTransferred(oldOwner, newOwner);
+    }
+}
+
+// --- ERC721 Full Implementation ---
+
 abstract contract ERC721 is Context, ERC165, IERC721, IERC721Metadata {
+    using Counters for Counters.Counter;
     mapping(uint256 => address) private _owners;
     mapping(address => uint256) private _balances;
     mapping(uint256 => address) private _tokenApprovals;
@@ -241,37 +268,8 @@ abstract contract ERC721 is Context, ERC165, IERC721, IERC721Metadata {
     }
 }
 
-// Part 3: Ownable and the start of the main contract
-abstract contract Ownable is Context {
-    address private _owner;
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+// --- Main LockAndReward Contract ---
 
-    constructor() {
-        _transferOwnership(_msgSender());
-    }
-
-    modifier onlyOwner() {
-        require(owner() == _msgSender(), "Ownable: caller is not the owner");
-        _;
-    }
-
-    function owner() public view virtual returns (address) {
-        return _owner;
-    }
-
-    function transferOwnership(address newOwner) public virtual onlyOwner {
-        require(newOwner != address(0), "Ownable: new owner is the zero address");
-        _transferOwnership(newOwner);
-    }
-
-    function _transferOwnership(address newOwner) internal virtual {
-        address oldOwner = _owner;
-        _owner = newOwner;
-        emit OwnershipTransferred(oldOwner, newOwner);
-    }
-}
-
-// Part 4: Main LockAndReward Contract Logic
 contract LockAndReward is ERC721, Ownable {
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIdCounter;
@@ -314,14 +312,23 @@ contract LockAndReward is ERC721, Ownable {
         require(ownerOf(_tokenId) == msg.sender, "Unlock caller is not the owner of this NFT");
         LockInfo storage currentLock = lockDetails[_tokenId];
         uint256 rewardAmount = _calculateReward(currentLock.amount, currentLock.startTime);
+        
+        // --- BUG FIX ---
+        // First, save the amount to return in a local variable BEFORE deleting the struct.
+        uint256 amountToReturn = currentLock.amount;
+
         _burn(_tokenId);
         delete lockDetails[_tokenId];
+        
         if (rewardAmount > 0) {
             rewardToken.mint(msg.sender, rewardAmount);
         }
-        (bool sent, ) = msg.sender.call{value: currentLock.amount}("");
+
+        // Now, use the saved local variable to return the funds.
+        (bool sent, ) = msg.sender.call{value: amountToReturn}("");
         require(sent, "Failed to send Ether back to the user");
-        emit TokensUnlocked(msg.sender, _tokenId, currentLock.amount, rewardAmount);
+
+        emit TokensUnlocked(msg.sender, _tokenId, amountToReturn, rewardAmount);
     }
 
     function getLockInfo(uint256 _tokenId) public view returns (LockInfo memory) {
