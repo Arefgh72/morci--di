@@ -621,7 +621,6 @@ library Strings {
  * For example:
  *
  * ```
- * import "@openzeppelin/contracts/utils/Counters.sol";
  *
  * contract MyContract {
  * using Counters for Counters.Counter;
