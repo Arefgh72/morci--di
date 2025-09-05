@@ -8,7 +8,6 @@
       "contractName": "WalletStatusNFT",
       "source": "contracts/StatusNFT.sol",
       "args": []
-      ]
     }
   ]
 }
