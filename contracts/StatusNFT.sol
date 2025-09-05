@@ -506,7 +506,7 @@ library Strings {
                 ptr--;
                 /// @solidity memory-safe-assembly
                 assembly {
-                    mstore8(ptr, byte(mod(value, 10) + 48))
+                    mstore8(ptr, add(mod(value, 10), 48))
                 }
                 value /= 10;
                 if (value == 0) break;
