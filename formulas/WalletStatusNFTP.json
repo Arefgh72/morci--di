@@ -1,0 +1,13 @@
+{
+  "name": "استقارار کامل INFT  ",
+  "description": "",
+  "steps": [
+    {
+      "step": 1,
+      "action": "deploy",
+      "contractName": "WalletStatusNFTP",
+      "source": "contracts/StatusNFTP.sol",
+      "args": []
+    }
+  ]
+}
