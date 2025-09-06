@@ -1068,7 +1068,7 @@ contract ERC721 is Context, ERC165, IERC721, IERC721Metadata {
  * @notice A contract for dynamic NFTs on Monad, representing wallet on-chain status.
  * Metadata is stored on IPFS and accessed via a public gateway.
  */
-contract WalletStatusNFT is ERC721, Ownable {
+contract WalletStatusNFTP is ERC721, Ownable { // <<< NAME CHANGED HERE
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIdCounter;
 
@@ -1154,3 +1154,4 @@ contract WalletStatusNFT is ERC721, Ownable {
         return _tokenIdCounter.current();
     }
 }
+
