@@ -1159,5 +1159,12 @@ contract WalletStatusNFT is ERC721, Ownable {
     function hasMinted(address wallet) external view returns (bool) {
         return _hasMinted[wallet];
     }
+/**
+ * @notice Returns the total number of tokens minted so far.
+ * @dev This is a helper function to make the total supply publicly readable.
+ */
+function totalSupply() public view returns (uint256) {
+    return _tokenIdCounter.current();
+}
 }
 
