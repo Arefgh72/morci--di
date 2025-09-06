@@ -1063,28 +1063,37 @@ contract ERC721 is Context, ERC165, IERC721, IERC721Metadata {
      */
     function _afterTokenTransfer(address from, address to, uint256 tokenId) internal virtual {}
 }
-
+/**
+ * @title WalletStatusNFT
+ * @notice A contract for dynamic NFTs on Monad, representing wallet on-chain status.
+ * Metadata is stored on IPFS and accessed via a public gateway.
+ */
 contract WalletStatusNFT is ERC721, Ownable {
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIdCounter;
 
-    // --- THIS IS THE ONLY CHANGE ---
-    // The gateway URL is now a standard public IPFS gateway.
+    // The gateway URL is a standard public IPFS gateway (Pinata).
     string private constant GATEWAY_URL = "https://gateway.pinata.cloud/ipfs/";
 
-    // Mapping from a tokenId to its unique IPFS CID (Content Identifier).
+    // Mapping from a tokenId to its unique IPFS Content Identifier (CID).
     mapping(uint256 => string) private _tokenRootHashes;
 
-    // ... (The rest of the contract code is exactly the same as before) ...
-    // [Remaining contract code is omitted for brevity but is identical to the previous version]
-
+    // Mapping to ensure each wallet can only mint one NFT.
     mapping(address => bool) private _hasMinted;
+
+    // --- Events ---
     event StatusNFTMinted(address indexed owner, uint256 indexed tokenId);
     event TokenRootHashUpdated(uint256 indexed tokenId, string newRootHash);
     event BatchTokenRootHashesUpdated(uint256[] tokenIds);
 
-    constructor() ERC721("Wallet Status NFT", "WSNFT") Ownable(msg.sender) {}
+    /**
+     * @dev Sets the name and symbol for the NFT collection.
+     */
+    constructor() ERC721("Monad Wallet Status", "MWS") Ownable(msg.sender) {}
 
+    /**
+     * @notice Allows a user to mint their own status NFT. Each address can mint only once.
+     */
     function mintStatusNFT() external {
         require(!_hasMinted[msg.sender], "WalletStatusNFT: You have already minted an NFT.");
         _hasMinted[msg.sender] = true;
@@ -1094,12 +1103,20 @@ contract WalletStatusNFT is ERC721, Ownable {
         emit StatusNFTMinted(msg.sender, tokenId);
     }
     
+    /**
+     * @notice Updates the IPFS CID for a specific token.
+     * @dev Can only be called by the contract owner (your script).
+     */
     function setTokenRootHash(uint256 tokenId, string memory rootHash) external onlyOwner {
         require(_exists(tokenId), "WalletStatusNFT: Cannot set URI for a nonexistent token.");
         _tokenRootHashes[tokenId] = rootHash;
         emit TokenRootHashUpdated(tokenId, rootHash);
     }
 
+    /**
+     * @notice Updates the CIDs for multiple tokens in a single transaction for gas efficiency.
+     * @dev Can only be called by the contract owner (your script).
+     */
     function batchSetTokenRootHashes(uint256[] memory tokenIds, string[] memory rootHashes) external onlyOwner {
         require(tokenIds.length == rootHashes.length, "WalletStatusNFT: Arrays must have the same length.");
         for (uint256 i = 0; i < tokenIds.length; i++) {
@@ -1110,19 +1127,29 @@ contract WalletStatusNFT is ERC721, Ownable {
         emit BatchTokenRootHashesUpdated(tokenIds);
     }
 
+    /**
+     * @notice Returns the full metadata URI for a token.
+     */
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
         require(_exists(tokenId), "WalletStatusNFT: URI query for nonexistent token.");
         string memory rootHash = _tokenRootHashes[tokenId];
         if (bytes(rootHash).length == 0) {
             return "";
         }
+        // The final URI is: https://gateway.pinata.cloud/ipfs/YOUR_CID
         return string(abi.encodePacked(GATEWAY_URL, rootHash));
     }
 
+    /**
+     * @dev A helper function to check if a wallet has already minted.
+     */
     function hasMinted(address wallet) external view returns (bool) {
         return _hasMinted[wallet];
     }
 
+    /**
+     * @notice Returns the total number of tokens minted so far.
+     */
     function totalSupply() public view returns (uint256) {
         return _tokenIdCounter.current();
     }
