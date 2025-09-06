@@ -1,0 +1,29 @@
+{
+  "language": "Solidity",
+  "sources": {
+    "contracts/StatusNFTP.sol": {
+      "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.20;\n\nimport \"@openzeppelin/contracts/token/ERC721/ERC721.sol\";\nimport \"@openzeppelin/contracts/access/Ownable.sol\";\nimport \"@openzeppelin/contracts/utils/Counters.sol\";\n\ncontract WalletStatusNFT is ERC721, Ownable {\n    using Counters for Counters.Counter;\n    Counters.Counter private _tokenIdCounter;\n\n    // --- THIS IS THE ONLY CHANGE ---\n    // The gateway URL is now a standard public IPFS gateway.\n    string private constant GATEWAY_URL = \"https://gateway.pinata.cloud/ipfs/\";\n\n    // Mapping from a tokenId to its unique IPFS CID (Content Identifier).\n    mapping(uint256 => string) private _tokenRootHashes;\n\n    // ... (The rest of the contract code is exactly the same as before) ...\n    // [Remaining contract code is omitted for brevity but is identical to the previous version]\n\n    mapping(address => bool) private _hasMinted;\n    event StatusNFTMinted(address indexed owner, uint256 indexed tokenId);\n    event TokenRootHashUpdated(uint256 indexed tokenId, string newRootHash);\n    event BatchTokenRootHashesUpdated(uint256[] tokenIds);\n\n    constructor() ERC721(\"Wallet Status NFT\", \"WSNFT\") Ownable(msg.sender) {}\n\n    function mintStatusNFT() external {\n        require(!_hasMinted[msg.sender], \"WalletStatusNFT: You have already minted an NFT.\");\n        _hasMinted[msg.sender] = true;\n        _tokenIdCounter.increment();\n        uint256 tokenId = _tokenIdCounter.current();\n        _safeMint(msg.sender, tokenId);\n        emit StatusNFTMinted(msg.sender, tokenId);\n    }\n    \n    function setTokenRootHash(uint256 tokenId, string memory rootHash) external onlyOwner {\n        require(_exists(tokenId), \"WalletStatusNFT: Cannot set URI for a nonexistent token.\");\n        _tokenRootHashes[tokenId] = rootHash;\n        emit TokenRootHashUpdated(tokenId, rootHash);\n    }\n\n    function batchSetTokenRootHashes(uint256[] memory tokenIds, string[] memory rootHashes) external onlyOwner {\n        require(tokenIds.length == rootHashes.length, \"WalletStatusNFT: Arrays must have the same length.\");\n        for (uint256 i = 0; i < tokenIds.length; i++) {\n            uint256 tokenId = tokenIds[i];\n            require(_exists(tokenId), \"WalletStatusNFT: One of the tokens does not exist.\");\n            _tokenRootHashes[tokenId] = rootHashes[i];\n        }\n        emit BatchTokenRootHashesUpdated(tokenIds);\n    }\n\n    function tokenURI(uint256 tokenId) public view override returns (string memory) {\n        require(_exists(tokenId), \"WalletStatusNFT: URI query for nonexistent token.\");\n        string memory rootHash = _tokenRootHashes[tokenId];\n        if (bytes(rootHash).length == 0) {\n            return \"\";\n        }\n        return string(abi.encodePacked(GATEWAY_URL, rootHash));\n    }\n\n    function hasMinted(address wallet) external view returns (bool) {\n        return _hasMinted[wallet];\n    }\n\n    function totalSupply() public view returns (uint256) {\n        return _tokenIdCounter.current();\n    }\n}\n"
+    }
+  },
+  "settings": {
+    "optimizer": {
+      "enabled": false,
+      "runs": 200
+    },
+    "outputSelection": {
+      "*": {
+        "*": [
+          "abi",
+          "evm.bytecode",
+          "evm.deployedBytecode",
+          "evm.methodIdentifiers",
+          "metadata"
+        ]
+      }
+    },
+    "metadata": {
+      "useLiteralContent": true
+    },
+    "libraries": {}
+  }
+}
