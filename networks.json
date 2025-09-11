@@ -23,6 +23,14 @@
     "chain_id": "1439",
     "explorer_url": "https://testnet.blockscout.injective.network/blocks"
   },
+    {
+    "id": "Mars-Testnet-10323",
+    "displayName": "Mars Testnet",
+    "network_name": "Mars Testnet",
+    "rpc_url": "https://mars.rpc.movachain.com/",
+    "chain_id": "10323",
+    "explorer_url": "https://scan.mars.movachain.com/"
+  },
   {
     "id": "0G-Galileo-Testnet-16601",
     "displayName": "0G-Galileo-Testnet",
