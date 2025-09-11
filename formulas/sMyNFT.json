@@ -1,0 +1,13 @@
+{
+  "name": "استقارار کامل MyNFT .sol  ",
+  "description": "",
+  "steps": [
+    {
+      "step": 1,
+      "action": "deploy",
+      "contractName": "MyNFT",
+      "source": "contracts/MyNFT .sol",
+      "args": []
+    }
+  ]
+}
