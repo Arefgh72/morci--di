@@ -29,7 +29,7 @@
     "network_name": "Mars Testnet",
     "rpc_url": "https://mars.rpc.movachain.com/",
     "chain_id": "10323",
-    "explorer_url": "https://scan.mars.movachain.com/"
+    "explorer_url": "https://mars.scan.movachain.com/"
   },
   {
     "id": "0G-Galileo-Testnet-16601",
