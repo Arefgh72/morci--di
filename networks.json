@@ -38,8 +38,8 @@
     "rpc_url": "https://evmrpc-testnet.0g.ai/",
     "chain_id": "16601",
     "explorer_url": "https://chainscan-galileo.0g.ai/"
-  }
-    {
+  },
+  {
     "id": "GiwaTestnet-91342",
     "displayName": "GiwaTestnet",
     "network_name": "GiwaTestnet",
