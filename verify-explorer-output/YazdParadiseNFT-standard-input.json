@@ -1,0 +1,29 @@
+{
+  "language": "Solidity",
+  "sources": {
+    "contracts/YazdParadiseNFT.sol": {
+      "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.20;\n\n// OpenZeppelin Ownable is included in ParsToken.sol, but we'll include a minimal version here too for clarity.\nabstract contract Context {\n    function _msgSender() internal view virtual returns (address) {\n        return msg.sender;\n    }\n}\nabstract contract Ownable is Context {\n    address private _owner;\n    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);\n    constructor(address initialOwner) { _transferOwnership(initialOwner); }\n    function owner() public view virtual returns (address) { return _owner; }\n    modifier onlyOwner() { require(owner() == _msgSender(), \"Ownable: caller is not the owner\"); _; }\n    function transferOwnership(address newOwner) public virtual onlyOwner {\n        require(newOwner != address(0), \"Ownable: new owner is the zero address\");\n        _transferOwnership(newOwner);\n    }\n    function _transferOwnership(address newOwner) internal virtual {\n        address oldOwner = _owner;\n        _owner = newOwner;\n        emit OwnershipTransferred(oldOwner, newOwner);\n    }\n}\n\n// A complete, self-contained ERC721 implementation for simplicity\ncontract YazdParadiseNFT is Context, Ownable {\n    // State variables\n    string private _name;\n    string private _symbol;\n    mapping(uint256 => address) private _owners;\n    mapping(address => uint256) private _balances;\n    uint256 private _nextTokenId;\n\n    // Events\n    event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);\n    \n    constructor(address initialOwner) Ownable(initialOwner) {\n        _name = \"Yazd Paradise NFT\";\n        _symbol = \"YPNFT\";\n    }\n\n    function name() public view returns (string memory) { return _name; }\n    function symbol() public view returns (string memory) { return _symbol; }\n    function balanceOf(address owner) public view returns (uint256) {\n        require(owner != address(0), \"ERC721: balance query for the zero address\");\n        return _balances[owner];\n    }\n    function ownerOf(uint256 tokenId) public view returns (address) {\n        address owner = _owners[tokenId];\n        require(owner != address(0), \"ERC721: owner query for nonexistent token\");\n        return owner;\n    }\n    \n    function mint(address to) public onlyOwner returns (uint256) {\n        uint256 tokenId = _nextTokenId++;\n        _safeMint(to, tokenId);\n        return tokenId;\n    }\n    \n    function _safeMint(address to, uint256 tokenId) internal {\n        _mint(to, tokenId);\n    }\n    \n    function _mint(address to, uint256 tokenId) internal {\n        require(to != address(0), \"ERC721: mint to the zero address\");\n        require(_owners[tokenId] == address(0), \"ERC721: token already minted\");\n        _balances[to] += 1;\n        _owners[tokenId] = to;\n        emit Transfer(address(0), to, tokenId);\n    }\n}\n"
+    }
+  },
+  "settings": {
+    "optimizer": {
+      "enabled": false,
+      "runs": 200
+    },
+    "outputSelection": {
+      "*": {
+        "*": [
+          "abi",
+          "evm.bytecode",
+          "evm.deployedBytecode",
+          "evm.methodIdentifiers",
+          "metadata"
+        ]
+      }
+    },
+    "metadata": {
+      "useLiteralContent": true
+    },
+    "libraries": {}
+  }
+}
