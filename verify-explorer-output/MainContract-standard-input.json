@@ -1,0 +1,29 @@
+{
+  "language": "Solidity",
+  "sources": {
+    "contracts/MainContract.sol": {
+      "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.20;\n\n// Minimal interfaces needed for interaction\ninterface IYazdParadiseNFT {\n    function mint(address to) external returns (uint256);\n    function balanceOf(address owner) external view returns (uint256);\n}\n\ninterface IParsToken {\n    function mint(address to, uint256 amount) external;\n}\n\n// Minimal Ownable contract\nabstract contract Context {\n    function _msgSender() internal view virtual returns (address) { return msg.sender; }\n}\nabstract contract Ownable is Context {\n    address private _owner;\n    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);\n    constructor(address initialOwner) { _transferOwnership(initialOwner); }\n    function owner() public view virtual returns (address) { return _owner; }\n    modifier onlyOwner() { require(owner() == _msgSender(), \"Ownable: caller is not the owner\"); _; }\n    function transferOwnership(address newOwner) public virtual onlyOwner {\n        require(newOwner != address(0), \"Ownable: new owner is the zero address\");\n        _transferOwnership(newOwner);\n    }\n    function _transferOwnership(address newOwner) internal virtual {\n        address oldOwner = _owner;\n        _owner = newOwner;\n        emit OwnershipTransferred(oldOwner, newOwner);\n    }\n}\n\ncontract MainContract is Ownable {\n    IYazdParadiseNFT public yazdParadiseNFT;\n    IParsToken public parsToken;\n\n    event Interacted(address indexed user, uint256 nftBalanceBefore, uint256 newNftId, uint256 parsTokenMinted);\n\n    constructor(address _yazdParadiseNFTAddress, address _parsTokenAddress, address initialOwner)\n        Ownable(initialOwner)\n    {\n        yazdParadiseNFT = IYazdParadiseNFT(_yazdParadiseNFTAddress);\n        parsToken = IParsToken(_parsTokenAddress);\n    }\n\n    function interact(address _originalCaller) external onlyOwner returns (uint256) {\n        uint256 currentNftBalance = yazdParadiseNFT.balanceOf(_originalCaller);\n        uint256 newNftId = yazdParadiseNFT.mint(_originalCaller);\n        uint256 parsToMint = 0;\n        if (currentNftBalance > 0) {\n            uint256 x = currentNftBalance;\n            uint256 y = (uint256(keccak256(abi.encodePacked(block.timestamp, _originalCaller, block.number, x, newNftId))) % 10) + 1;\n            uint256 g_full_tokens = (100 * y) * x;\n            parsToMint = g_full_tokens * (1 ether);\n            if (parsToMint > 0) {\n                 parsToken.mint(_originalCaller, parsToMint);\n            }\n        }\n        emit Interacted(_originalCaller, currentNftBalance, newNftId, parsToMint);\n        return newNftId;\n    }\n\n    function setYazdParadiseNFTAddress(address _newAddress) external onlyOwner {\n        yazdParadiseNFT = IYazdParadiseNFT(_newAddress);\n    }\n\n    function setParsTokenAddress(address _newAddress) external onlyOwner {\n        parsToken = IParsToken(_newAddress);\n    }\n\n    function withdrawEther() external onlyOwner {\n        payable(owner()).transfer(address(this).balance);\n    }\n}\n"
+    }
+  },
+  "settings": {
+    "optimizer": {
+      "enabled": false,
+      "runs": 200
+    },
+    "outputSelection": {
+      "*": {
+        "*": [
+          "abi",
+          "evm.bytecode",
+          "evm.deployedBytecode",
+          "evm.methodIdentifiers",
+          "metadata"
+        ]
+      }
+    },
+    "metadata": {
+      "useLiteralContent": true
+    },
+    "libraries": {}
+  }
+}
