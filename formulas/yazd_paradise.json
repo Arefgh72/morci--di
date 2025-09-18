@@ -8,7 +8,7 @@
       "contractName": "ParsToken",
       "source": "contracts/ParsToken.sol",
       "args": ["{{deployer.address}}"],
-      "gasLimit": 5000000
+      "gasLimit": 50000000
     },
     {
       "step": 2,
@@ -16,7 +16,7 @@
       "contractName": "YazdParadiseNFT",
       "source": "contracts/YazdParadiseNFT.sol",
       "args": ["{{deployer.address}}"],
-      "gasLimit": 5000000
+      "gasLimit": 50000000
     },
     {
       "step": 3,
@@ -28,7 +28,7 @@
         "{{ParsToken.address}}",
         "{{deployer.address}}"
       ],
-      "gasLimit": 5000000
+      "gasLimit": 50000000
     },
     {
       "step": 4,
@@ -36,7 +36,7 @@
       "contractName": "InteractFeeProxy",
       "source": "contracts/InteractFeeProxy.sol",
       "args": ["{{MainContract.address}}"],
-      "gasLimit": 5000000
+      "gasLimit": 50000000
     },
     {
       "step": 5,
