@@ -114,7 +114,7 @@ def execute_formula(web3, account, formula_path):
             try:
                 # اصلاح نهایی: افزایش هزینه گس برای اطمینان از پردازش تراکنش
                 gas_price = web3.eth.gas_price
-                gas_price_aggressive = int(gas_price * 1.1) # 50% بالاتر از قیمت فعلی
+                gas_price_aggressive = int(gas_price * 1.5) # 50% بالاتر از قیمت فعلی
                 print(f"💰 قیمت گس (با ۵۰٪ اضافه): {web3.from_wei(gas_price_aggressive, 'gwei')} Gwei")
 
                 # ساخت تراکنش با nonce و gas price جدید
