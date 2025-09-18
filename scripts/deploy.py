@@ -84,7 +84,7 @@ def resolve_args(args, context):
 
 def execute_formula(web3, account, formula_path):
     """
-    فایل دستورالعمل JSON را با منطق پیشرفته nonce و gas price اجرا می‌کند.
+    فایل دستورالعمل JSON را با منطق پیشرفته nonce و gas price و مدیریت هوشمند gas limit اجرا می‌کند.
     """
     try:
         with open(formula_path, 'r') as f:
@@ -105,19 +105,32 @@ def execute_formula(web3, account, formula_path):
         
         print(f"\n--- اجرای مرحله {step_num}: '{action}' برای '{step['contractName']}' ---")
         time.sleep(5)
-        # گرفتن جدیدترین nonce از شبکه برای شروع این مرحله
+        
         current_nonce = web3.eth.get_transaction_count(account.address)
         print(f"⛓️ Nonce اولیه برای این مرحله: {current_nonce}")
 
         max_retries = 3
         for i in range(max_retries):
             try:
-                # اصلاح نهایی: افزایش هزینه گس برای اطمینان از پردازش تراکنش
                 gas_price = web3.eth.gas_price
-                gas_price_aggressive = int(gas_price * 1.1) # 50% بالاتر از قیمت فعلی
-                print(f"💰 قیمت گس (با ۵۰٪ اضافه): {web3.from_wei(gas_price_aggressive, 'gwei')} Gwei")
+                gas_price_aggressive = int(gas_price * 1.2) # 20% بالاتر از قیمت فعلی
+                print(f"💰 قیمت گس (با ۲۰٪ اضافه): {web3.from_wei(gas_price_aggressive, 'gwei')} Gwei")
 
-                # ساخت تراکنش با nonce و gas price جدید
+                # *** شروع منطق هوشمند مدیریت گاز لیمیت ***
+                tx_options = {
+                    "from": account.address,
+                    "nonce": current_nonce,
+                    "gasPrice": gas_price_aggressive
+                }
+                
+                # اگر در فایل JSON برای این مرحله gasLimit تعریف شده بود، از آن استفاده کن
+                if "gasLimit" in step:
+                    tx_options['gas'] = step['gasLimit']
+                    print(f"⛽️ از گاز لیمیت دستی استفاده می‌شود: {step['gasLimit']}")
+                # در غیر این صورت، web3.py به صورت خودکار گاز را تخمین خواهد زد
+                # *** پایان منطق هوشمند ***
+
+                # ساخت تراکنش با استفاده از tx_options
                 if action == "deploy":
                     contract_name = step["contractName"]
                     source_path = step["source"]
@@ -127,9 +140,8 @@ def execute_formula(web3, account, formula_path):
                     abi = contract_interface['abi']
                     bytecode = contract_interface['bin']
                     Contract = web3.eth.contract(abi=abi, bytecode=bytecode)
-                    tx_data = Contract.constructor(*constructor_args).build_transaction({
-                        "from": account.address, "nonce": current_nonce, "gasPrice": gas_price_aggressive
-                    })
+                    
+                    tx_data = Contract.constructor(*constructor_args).build_transaction(tx_options)
 
                 elif action == "call_function":
                     contract_name = step["contractName"]
@@ -138,9 +150,8 @@ def execute_formula(web3, account, formula_path):
                     target_contract_info = deployment_context[contract_name]
                     contract_instance = web3.eth.contract(address=target_contract_info["address"], abi=target_contract_info["abi"])
                     func = getattr(contract_instance.functions, function_name)
-                    tx_data = func(*function_args).build_transaction({
-                        "from": account.address, "nonce": current_nonce, "gasPrice": gas_price_aggressive
-                    })
+                    
+                    tx_data = func(*function_args).build_transaction(tx_options)
                 else:
                     print(f"⚠️ اکشن ناشناخته '{action}'.")
                     break
@@ -161,7 +172,7 @@ def execute_formula(web3, account, formula_path):
                 elif action == "call_function":
                     print(f"✅ تابع '{function_name}' روی قرارداد '{contract_name}' با موفقیت اجرا شد.")
                 
-                break # خروج از حلقه تلاش مجدد در صورت موفقیت
+                break 
 
             except Web3RPCError as e:
                 error_message = str(e).lower()
@@ -183,7 +194,7 @@ def execute_formula(web3, account, formula_path):
 
 def main():
     if len(sys.argv) < 3:
-        print("❌ خطا: ورودی‌ها کامل نیستند.")
+        print("❌ خطا: ورودی‌ها کامل نیستند. فرمت صحیح: python deploy.py <formula_filename.json> <network_id>")
         sys.exit(1)
     
     formula_filename = sys.argv[1]
