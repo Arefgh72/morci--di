@@ -51,10 +51,18 @@ def setup(network_id):
     account = web3.eth.account.from_key(private_key)
     web3.eth.default_account = account.address
 
+    # تشخیص پشتیبانی EIP-1559
+    try:
+        latest_block = web3.eth.get_block('latest')
+        supports_eip1559 = 'baseFeePerGas' in latest_block
+        print(f"🔹 EIP-1559 پشتیبانی می‌شود؟ {supports_eip1559}")
+    except Exception:
+        supports_eip1559 = False
+
     print(f"✅ با موفقیت به شبکه متصل شد.")
     print(f"👤 آدرس دیپلوی کننده: {account.address}")
     
-    return web3, account
+    return web3, account, supports_eip1559
 
 # --- ۲. موتور اجرایی ---
 
@@ -82,9 +90,9 @@ def resolve_args(args, context):
             resolved.append(arg)
     return resolved
 
-def execute_formula(web3, account, formula_path):
+def execute_formula(web3, account, formula_path, supports_eip1559):
     """
-    فایل دستورالعمل JSON را با منطق پیشرفته nonce و gas price و مدیریت هوشمند gas limit اجرا می‌کند.
+    فایل دستورالعمل JSON را اجرا می‌کند با منطق هوشمند nonce و gas و پشتیبانی EIP-1559.
     """
     try:
         with open(formula_path, 'r') as f:
@@ -113,34 +121,51 @@ def execute_formula(web3, account, formula_path):
         for i in range(max_retries):
             try:
                 gas_price = web3.eth.gas_price
-                gas_price_aggressive = int(gas_price * 1.2) # 20% بالاتر از قیمت فعلی
-                print(f"💰 قیمت گس (با ۲۰٪ اضافه): {web3.from_wei(gas_price_aggressive, 'gwei')} Gwei")
+                gas_price_aggressive = int(gas_price * 1.2) # 20% بالاتر
 
-                # *** شروع منطق هوشمند مدیریت گاز لیمیت ***
                 tx_options = {
                     "from": account.address,
                     "nonce": current_nonce,
-                    "gasPrice": gas_price_aggressive
                 }
-                
-                # اگر در فایل JSON برای این مرحله gasLimit تعریف شده بود، از آن استفاده کن
+
+                # اگر شبکه EIP-1559 دارد
+                if supports_eip1559:
+                    latest_block = web3.eth.get_block('latest')
+                    base_fee = latest_block['baseFeePerGas']
+                    max_priority_fee = web3.to_wei(2, 'gwei')  # پیش‌فرض 2 Gwei
+                    tx_options['maxFeePerGas'] = base_fee + max_priority_fee
+                    tx_options['maxPriorityFeePerGas'] = max_priority_fee
+                    print(f"💰 EIP-1559 فعال: maxFee={tx_options['maxFeePerGas']}, maxPriority={max_priority_fee}")
+                else:
+                    tx_options['gasPrice'] = gas_price_aggressive
+                    print(f"💰 شبکه Legacy: gasPrice={web3.from_wei(gas_price_aggressive, 'gwei')} Gwei")
+
+                # Gas Limit
                 if "gasLimit" in step:
                     tx_options['gas'] = step['gasLimit']
                     print(f"⛽️ از گاز لیمیت دستی استفاده می‌شود: {step['gasLimit']}")
-                # در غیر این صورت، web3.py به صورت خودکار گاز را تخمین خواهد زد
-                # *** پایان منطق هوشمند ***
-
-                # ساخت تراکنش با استفاده از tx_options
+                
+                # ساخت تراکنش
                 if action == "deploy":
                     contract_name = step["contractName"]
                     source_path = step["source"]
                     constructor_args = resolve_args(step.get("args", []), deployment_context)
-                    compiled_sol = solcx.compile_files([source_path], output_values=["abi", "bin"])
+                    compiled_sol = solcx.compile_files(
+                        [source_path],
+                        output_values=["abi", "bin"],
+                        evm_version='istanbul'  # سازگار با شبکه‌های قدیمی
+                    )
                     contract_interface = compiled_sol[f'{source_path}:{contract_name}']
                     abi = contract_interface['abi']
                     bytecode = contract_interface['bin']
                     Contract = web3.eth.contract(abi=abi, bytecode=bytecode)
                     
+                    # Gas تخمینی برای Deploy
+                    if "gasLimit" not in step:
+                        estimated_gas = Contract.constructor(*constructor_args).estimate_gas({'from': account.address})
+                        tx_options['gas'] = int(estimated_gas * 1.3)
+                        print(f"⛽️ Gas تخمینی برای Deploy: {tx_options['gas']}")
+
                     tx_data = Contract.constructor(*constructor_args).build_transaction(tx_options)
 
                 elif action == "call_function":
@@ -164,7 +189,7 @@ def execute_formula(web3, account, formula_path):
                 # انتظار برای تایید
                 tx_receipt = web3.eth.wait_for_transaction_receipt(tx_hash, timeout=300)
 
-                # ثبت نتیجه در صورت موفقیت
+                # ثبت نتیجه
                 if action == "deploy":
                     contract_address = tx_receipt.contractAddress
                     print(f"✅ قرارداد '{contract_name}' با موفقیت در آدرس {contract_address} دیپلوی شد.")
@@ -172,7 +197,7 @@ def execute_formula(web3, account, formula_path):
                 elif action == "call_function":
                     print(f"✅ تابع '{function_name}' روی قرارداد '{contract_name}' با موفقیت اجرا شد.")
                 
-                break 
+                break  # اگر موفق بود، retry را رد می‌کنیم
 
             except Web3RPCError as e:
                 error_message = str(e).lower()
@@ -202,8 +227,8 @@ def main():
     
     formula_path = os.path.join("formulas", formula_filename)
     
-    web3, account = setup(network_id)
-    execute_formula(web3, account, formula_path)
+    web3, account, supports_eip1559 = setup(network_id)
+    execute_formula(web3, account, formula_path, supports_eip1559)
 
 if __name__ == "__main__":
     main()
