@@ -39,6 +39,14 @@
     "chain_id": "16601",
     "explorer_url": "https://chainscan-galileo.0g.ai/"
   },
+   {
+    "id": "Haust-Network-Testnet-1523903251",
+    "displayName": "Haust Network Testnet",
+    "network_name": "Haust Network Testnet",
+    "rpc_url": "https://rpc-testnet.haust.app/",
+    "chain_id": "1523903251",
+    "explorer_url": "https://explorer-testnet.haust.app"
+  },
   {
     "id": "GiwaTestnet-91342",
     "displayName": "GiwaTestnet",
