@@ -33,7 +33,7 @@
     "rpc_url": "https://mars.rpc.movachain.com/",
     "chain_id": "10323",
     "explorer_url": "https://scan.mars.movachain.com",
-    "evm_version": "shanghai"
+    "evm_version": "istanbul"
   },
   {
     "id": "0G-Galileo-Testnet-16601",
