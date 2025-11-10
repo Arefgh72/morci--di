@@ -5,7 +5,8 @@
     "network_name": "Ethereum Sepolia",
     "rpc_url": "https://ethereum-sepolia-rpc.publicnode.com",
     "chain_id": "11155111",
-    "explorer_url": "https://sepolia.etherscan.io"
+    "explorer_url": "https://sepolia.etherscan.io",
+    "evm_version": "shanghai"
   },
   {
     "id": "Monad Testnet-10143",
@@ -13,7 +14,8 @@
     "network_name": "Monad Testnet",
     "rpc_url": "https://testnet-rpc.monad.xyz",
     "chain_id": "10143",
-    "explorer_url": "https://explorer.testnet.monad.xyz"
+    "explorer_url": "https://explorer.testnet.monad.xyz",
+    "evm_version": "shanghai"
   },
   {
     "id": "Injective Testnet-1439",
@@ -21,7 +23,8 @@
     "network_name": "Injective Testnet",
     "rpc_url": "https://k8s.testnet.json-rpc.injective.network/",
     "chain_id": "1439",
-    "explorer_url": "https://testnet.blockscout.injective.network/blocks"
+    "explorer_url": "https://testnet.blockscout.injective.network/blocks",
+    "evm_version": "shanghai"
   },
     {
     "id": "Mars-Testnet-10323",
@@ -29,7 +32,8 @@
     "network_name": "Mars Testnet",
     "rpc_url": "https://mars.rpc.movachain.com/",
     "chain_id": "10323",
-    "explorer_url": "https://scan.mars.movachain.com"
+    "explorer_url": "https://scan.mars.movachain.com",
+    "evm_version": "shanghai"
   },
   {
     "id": "0G-Galileo-Testnet-16601",
@@ -37,7 +41,8 @@
     "network_name": "0G-Galileo-Testnet",
     "rpc_url": "https://evmrpc-testnet.0g.ai/",
     "chain_id": "16601",
-    "explorer_url": "https://chainscan-galileo.0g.ai/"
+    "explorer_url": "https://chainscan-galileo.0g.ai/",
+    "evm_version": "shanghai"
   },
    {
     "id": "Haust-Network-Testnet-1523903251",
@@ -45,7 +50,8 @@
     "network_name": "Haust Network Testnet",
     "rpc_url": "https://rpc-testnet.haust.app/",
     "chain_id": "1523903251",
-    "explorer_url": "https://explorer-testnet.haust.app"
+    "explorer_url": "https://explorer-testnet.haust.app",
+    "evm_version": "shanghai"
   },
   {
     "id": "GiwaTestnet-91342",
@@ -53,6 +59,7 @@
     "network_name": "GiwaTestnet",
     "rpc_url": "https://sepolia-rpc.giwa.io/",
     "chain_id": "91342",
-    "explorer_url": "https://sepolia-explorer.giwa.io"
+    "explorer_url": "https://sepolia-explorer.giwa.io",
+    "evm_version": "shanghai"
   }
 ]
