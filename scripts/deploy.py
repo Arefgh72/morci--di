@@ -62,7 +62,7 @@ def setup(network_id):
     print(f"✅ با موفقیت به شبکه متصل شد.")
     print(f"👤 آدرس دیپلوی کننده: {account.address}")
     
-    return web3, account, supports_eip1559
+    return web3, account, supports_eip1559, selected_network
 
 # --- ۲. موتور اجرایی ---
 
@@ -90,7 +90,7 @@ def resolve_args(args, context):
             resolved.append(arg)
     return resolved
 
-def execute_formula(web3, account, formula_path, supports_eip1559):
+def execute_formula(web3, account, formula_path, supports_eip1559, network_config):
     """
     فایل دستورالعمل JSON را اجرا می‌کند با منطق هوشمند nonce و gas و پشتیبانی EIP-1559.
     """
@@ -149,11 +149,14 @@ def execute_formula(web3, account, formula_path, supports_eip1559):
                 if action == "deploy":
                     contract_name = step["contractName"]
                     source_path = step["source"]
+                    evm_version = network_config.get("evm_version", "istanbul")
+                    print(f"📦 در حال کامپایل با EVM نسخه: {evm_version}")
+
                     constructor_args = resolve_args(step.get("args", []), deployment_context)
                     compiled_sol = solcx.compile_files(
                         [source_path],
                         output_values=["abi", "bin"],
-                        evm_version='istanbul'  # سازگار با شبکه‌های قدیمی
+                        evm_version=evm_version
                     )
                     contract_interface = compiled_sol[f'{source_path}:{contract_name}']
                     abi = contract_interface['abi']
@@ -227,8 +230,8 @@ def main():
     
     formula_path = os.path.join("formulas", formula_filename)
     
-    web3, account, supports_eip1559 = setup(network_id)
-    execute_formula(web3, account, formula_path, supports_eip1559)
+    web3, account, supports_eip1559, selected_network = setup(network_id)
+    execute_formula(web3, account, formula_path, supports_eip1559, selected_network)
 
 if __name__ == "__main__":
     main()
