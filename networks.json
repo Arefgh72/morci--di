@@ -61,7 +61,7 @@
     "chain_id": "91342",
     "explorer_url": "https://sepolia-explorer.giwa.io",
     "evm_version": "shanghai"
-  }
+  },
    {
     "id": "TempoTestnet-42429",
     "displayName": "TempoTestnet",
