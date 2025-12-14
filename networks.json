@@ -62,4 +62,13 @@
     "explorer_url": "https://sepolia-explorer.giwa.io",
     "evm_version": "shanghai"
   }
+   {
+    "id": "TempoTestnet-42429",
+    "displayName": "TempoTestnet",
+    "network_name": "TempoTestnet",
+    "rpc_url": "https://rpc.testnet.tempo.xyz",
+    "chain_id": "42429",
+    "explorer_url": "https://explore.tempo.xyz",
+    "evm_version": "shanghai"
+  }
 ]
