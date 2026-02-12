@@ -68,7 +68,7 @@
     "network_name": "RobinhoodChainTestnet",
     "rpc_url": "https://rpc.testnet.chain.robinhood.com/rpc",
     "chain_id": 46630,
-    "explorer_url": "https://explorer.testnet.chain.robinhood.com"
+    "explorer_url": "https://explorer.testnet.chain.robinhood.com",
     "evm_version": "shanghai"
   },
    {
