@@ -78,7 +78,7 @@
     "rpc_url": "https://rpc.testnet.alchemychain.com",
     "chain_id": 202512,
     "explorer_url": "https://scan.testnet.alchemychain.com",
-    "evm_version": "shanghai"
+    "evm_version": "paris"
   },
    {
     "id": "TempoTestnet-42429",
