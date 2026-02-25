@@ -81,6 +81,15 @@
     "evm_version": "paris"
   },
    {
+    "id": "AutheoTestnet-202512",
+    "displayName": "Autheo Testnet",
+    "network_name": "AutheoTestnet",
+    "rpc_url": "https://testnet-rpc1.autheo.com",
+    "chain_id": 785,
+    "explorer_url": "https://testnet-explorer.autheo.com",
+    "evm_version": "shanghai"
+  },
+   {
     "id": "TempoTestnet-42429",
     "displayName": "TempoTestnet",
     "network_name": "TempoTestnet",
